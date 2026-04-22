@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0a0b10;
+  color: #f6f4ee;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.display {
+  font-family: "Fraunces", serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: -0.01em;
+}
+
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+.vignette {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(198, 255, 110, 0.08), transparent 60%),
+    radial-gradient(120% 80% at 100% 100%, rgba(126, 217, 209, 0.06), transparent 55%),
+    #0a0b10;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-accent-primary text-ink-900 font-medium tracking-tight transition-all hover:brightness-95 hover:-translate-y-0.5 active:translate-y-0;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05) inset, 0 10px 30px -10px rgba(198, 255, 110, 0.55);
+}
+
+.btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full border border-white/10 text-white/80 hover:border-white/25 hover:text-white transition-all;
+}
+
+.chip {
+  @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs tracking-wide text-white/70;
+}
+
+.card {
+  @apply relative rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl;
+}
+
+.gradient-text {
+  background: linear-gradient(120deg, #f6f4ee 0%, #c6ff6e 60%, #7ed9d1 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.option {
+  @apply relative flex items-center justify-between gap-4 w-full rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4 text-left transition-all hover:border-white/25 hover:bg-white/[0.05];
+}
+
+.option[data-selected="true"] {
+  @apply border-accent-primary bg-accent-primary/10;
+  box-shadow: 0 0 0 1px rgba(198, 255, 110, 0.35), 0 20px 40px -20px rgba(198, 255, 110, 0.35);
+}
+
+.option-dot {
+  @apply shrink-0 h-5 w-5 rounded-full border border-white/25 transition-all;
+}
+
+.option[data-selected="true"] .option-dot {
+  @apply border-accent-primary bg-accent-primary;
+  box-shadow: 0 0 0 4px rgba(198, 255, 110, 0.12);
+}
+
+.field-input {
+  @apply w-full rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-lg outline-none transition-all placeholder:text-white/30 focus:border-accent-primary focus:bg-white/[0.06];
+}
+
+.progress-dot {
+  @apply h-1 rounded-full bg-white/10 transition-all;
+}
+
+.progress-dot[data-active="true"] {
+  @apply bg-accent-primary;
+}
+
+.progress-dot[data-done="true"] {
+  @apply bg-white/40;
+}
