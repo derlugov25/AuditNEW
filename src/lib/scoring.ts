@@ -1,13 +1,12 @@
 import { Answers } from "./types";
 
-export type DomainKey = "stress" | "sleep" | "movement" | "nutrition" | "habits" | "social";
+export type DomainKey = "stress" | "sleep" | "movement" | "nutrition" | "habits";
 
 export interface DomainScore {
   key: DomainKey;
   label: string;
   score0to100: number;
   velocityContribution: number;
-  /** Доля «потерянных лет» по модели отчёта, лет (сумма по доменам ≈ yearsLifeLostTotal). */
   yearsLifeLost: number;
   weight: number;
   verdict: "strong" | "ok" | "risk" | "critical";
@@ -17,9 +16,7 @@ export interface DomainScore {
 export interface WaterfallItem {
   key: string;
   label: string;
-  /** Вклад в служебную «скорость старения», % к шкале −5…+40 (внутренний расчёт). */
   delta: number;
-  /** Оценка потери здоровых лет жизни по этому рычагу, лет (показ пользователю). */
   yearsLost: number;
 }
 
@@ -41,6 +38,7 @@ export interface ScoreResult {
   longyScoreBand: "excellent" | "good" | "attention" | "risk" | "critical";
   bmi: number | null;
   bmiCategory: "underweight" | "normal" | "overweight" | "obese" | "unknown";
+  waistCategory: "normal" | "elevated" | "high" | "unknown";
   domains: Record<DomainKey, DomainScore>;
   rankedAccelerators: DomainScore[];
   protectors: DomainScore[];
@@ -49,30 +47,24 @@ export interface ScoreResult {
   goalDomainScore: DomainScore | null;
   healthspanYears: number;
   healthspanMax: number;
-  /** Оценка потери здоровых лет из-за образа жизни (модель: до ~12 лет при +40% к шкале). */
   yearsLifeLostTotal: number;
   velocityWaterfall: WaterfallItem[];
   projection: Projection;
 }
 
-// Li et al., J Intern Med 2024: следование 8 низкорисковым факторам образа жизни
-// даёт ~12 дополнительных лет жизни без хронических заболеваний.
-// Наши 6 доменов сгруппированы иначе, но сохраняют пропорцию влияния.
+// Li et al., J Intern Med 2024 — 5 доменов (social удалён), сумма 12 лет сохранена
 const HEALTHSPAN_MAX_YEARS: Record<DomainKey, number> = {
-  habits: 3.0,
-  sleep: 2.5,
-  movement: 2.0,
+  habits: 3.5,
+  sleep: 3.0,
+  movement: 2.5,
   nutrition: 1.5,
   stress: 1.5,
-  social: 1.5,
 };
 export const HEALTHSPAN_TOTAL_YEARS = 12;
 
-/** Ориентир Li et al.: при «максимальной» нагрузке по шкале отчёта (+40%) — до ~12 лет здоровой жизни в формулировках. */
 const LIFE_YEARS_AT_MAX_VELOCITY = 12;
 const VELOCITY_CAP_FOR_YEARS = 40;
 
-/** Сводит служебную скорость старения (%) в оценку потери здоровых лет для тезиса отчёта. */
 export function lifeYearsLostFromVelocity(agingVelocityPct: number): number {
   const v = Math.max(0, agingVelocityPct);
   return Math.round((v / VELOCITY_CAP_FOR_YEARS) * LIFE_YEARS_AT_MAX_VELOCITY * 10) / 10;
@@ -86,8 +78,6 @@ const longyBandFor = (score: number): ScoreResult["longyScoreBand"] => {
   return "critical";
 };
 
-// Привязка главной цели пользователя к приоритетному домену.
-// Используется для подсветки в вердикте и бонусного веса в ранжировании.
 const GOAL_TO_DOMAIN: Record<Answers["goal"], DomainKey | null> = {
   weight_loss: "nutrition",
   muscle_gain: "movement",
@@ -106,39 +96,34 @@ const chronoAgeFor = (a: Answers): number => {
 };
 
 const pick = <T extends string>(value: string, map: Record<T, number>, fallback = 0): number =>
-  (value && value in map ? map[value as T] : fallback);
+  value && value in map ? map[value as T] : fallback;
 
 // ──────────────────────────────────────────────────────────────
-// ШКАЛЫ ШТРАФОВ
-// Принцип: нормальное по ВОЗ/AASM поведение = 0 штрафа.
-// Штрафы начинаются там, где есть реальная доказательная база риска.
+// ДОМЕНЫ
 // ──────────────────────────────────────────────────────────────
 
 const stressDomain = (a: Answers): DomainScore => {
   const energy = pick(a.energyPattern, {
     stable_high: 0,
-    drop_after_lunch: 6, // нормальный постпрандиальный спад
-    unstable: 16,
-    mostly_low: 28,
+    drop_after_lunch: 4,
+    unstable: 14,
+    mostly_low: 26,
   } as const);
-  const foggy = pick(a.foggyDays, {
-    "0": 0,
-    "1-2": 4, // в пределах нормы
-    "3-4": 16,
-    "5-7": 28,
-  } as const);
-  const over = pick(a.overwhelmed, {
-    "0-2": 0,
-    "3-4": 6, // жизнь бывает сложной
-    "5-10": 20,
-    "10+": 32,
+  const foggy = pick(a.foggyHours, {
+    "<1h": 0,
+    "1-3h": 3,
+    "3-7h": 10,
+    "7-14h": 18,
+    "14-20h": 26,
+    "20-40h": 32,
+    "40+h": 38,
   } as const);
 
-  const raw = energy * 0.3 + foggy * 0.35 + over * 0.35;
+  const raw = energy * 0.5 + foggy * 0.5;
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "stress",
-    label: "Стресс и ментальная устойчивость",
+    label: "Ментальная устойчивость и фокус",
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -147,20 +132,29 @@ const stressDomain = (a: Answers): DomainScore => {
   };
 };
 
-const BEDTIME_HOUR: Record<string, number> = {
+export const BEDTIME_HOUR: Record<string, number> = {
   before22: 21.5,
   "22-23": 22.5,
   "23-00": 23.5,
   "00-01": 24.5,
-  after01: 25.5,
+  "01-02": 25.5,
+  "02-03": 26.5,
+  "03-04": 27.5,
+  "04-05": 28.5,
+  after05: 29.5,
 };
 
-const WAKE_HOUR: Record<string, number> = {
+export const WAKE_HOUR: Record<string, number> = {
   before6: 5.5,
   "6-7": 6.5,
   "7-8": 7.5,
   "8-9": 8.5,
-  after9: 9.5,
+  "9-10": 9.5,
+  "10-11": 10.5,
+  "11-12": 11.5,
+  "12-13": 12.5,
+  "13-14": 13.5,
+  after14: 14.5,
 };
 
 export const computeSleepHours = (a: Answers): number | null => {
@@ -171,15 +165,14 @@ export const computeSleepHours = (a: Answers): number | null => {
   return Math.max(0, Math.round((wake - bed) * 10) / 10);
 };
 
-// 7-9 ч — оптимум AASM. Штрафы растут нелинейно только на серьёзных отклонениях.
 const durationPenalty = (hours: number): number => {
   if (hours >= 7 && hours <= 9) return 0;
-  if (hours >= 6.5 && hours < 7) return 3; // lower bound нормы, не критично
+  if (hours >= 6.5 && hours < 7) return 3;
   if (hours >= 6 && hours < 6.5) return 10;
   if (hours >= 5 && hours < 6) return 22;
   if (hours < 5) return 36;
   if (hours > 9 && hours <= 10) return 4;
-  return 14; // >10 ч стабильно
+  return 14;
 };
 
 const circadianPenalty = (bedtime: Answers["bedtime"]): number =>
@@ -187,8 +180,12 @@ const circadianPenalty = (bedtime: Answers["bedtime"]): number =>
     before22: 0,
     "22-23": 0,
     "23-00": 2,
-    "00-01": 8,
-    after01: 14,
+    "00-01": 10,
+    "01-02": 18,
+    "02-03": 26,
+    "03-04": 32,
+    "04-05": 36,
+    after05: 40,
   } as const);
 
 const sleepDomain = (a: Answers): DomainScore => {
@@ -196,27 +193,69 @@ const sleepDomain = (a: Answers): DomainScore => {
   const duration = hours === null ? 20 : durationPenalty(hours);
   const probs = pick(a.sleepProblems, {
     never: 0,
-    "1-3": 6, // случайное — норма
-    "4-8": 20,
-    "9+": 32,
+    "1-3": 5,
+    "4-8": 18,
+    "9+": 30,
   } as const);
   const daytime = pick(a.daytimeSleepiness, {
     never: 0,
-    "1-3": 5,
-    "4-8": 18,
-    "9+": 28,
+    "1-3": 4,
+    "4-8": 16,
+    "9+": 26,
   } as const);
-  const circadianRaw = circadianPenalty(a.bedtime);
-  const durationOk = hours !== null && hours >= 7 && hours <= 9;
-  // Позднее засыпание (00:00+) имеет самостоятельный метаболический эффект (social jetlag)
-  // даже при нормальной длительности — применяем 40% штрафа.
-  const circadian = durationOk ? circadianRaw * 0.4 : circadianRaw;
+  const circadian = circadianPenalty(a.bedtime);
 
-  const raw = duration * 0.45 + probs * 0.3 + daytime * 0.2 + circadian * 0.05;
+  const raw = duration * 0.35 + circadian * 0.25 + probs * 0.25 + daytime * 0.15;
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "sleep",
-    label: "Качество сна",
+    label: "Качество сна и режим",
+    score0to100: Math.round(score),
+    velocityContribution: 0,
+    yearsLifeLost: 0,
+    weight: 0.22,
+    verdict: verdictFor(score),
+  };
+};
+
+const movementDomain = (a: Answers): DomainScore => {
+  const days = pick(a.activeDays, {
+    "0": 32,
+    "1-2": 16,
+    "3-4": 4,
+    "5-7": 0,
+  } as const);
+  const sit = pick(a.sittingHours, {
+    "<4": 0,
+    "4-6": 4,
+    "6-8": 14,
+    "8+": 26,
+  } as const);
+
+  const functionalCount = a.functionalActivities.length;
+  const functional =
+    functionalCount >= 6
+      ? 0
+      : functionalCount >= 4
+        ? 6
+        : functionalCount >= 2
+          ? 16
+          : functionalCount >= 1
+            ? 26
+            : 32;
+
+  const breath = pick(a.breathRecovery, {
+    "<1min": 0,
+    "1-2min": 4,
+    "3-5min": 18,
+    "5min+_avoid": 32,
+  } as const);
+
+  const raw = days * 0.4 + sit * 0.25 + functional * 0.2 + breath * 0.15;
+  const score = Math.max(0, 100 - raw * 2);
+  return {
+    key: "movement",
+    label: "Движение и функциональная форма",
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -225,53 +264,27 @@ const sleepDomain = (a: Answers): DomainScore => {
   };
 };
 
-const movementDomain = (a: Answers): DomainScore => {
-  // ВОЗ: 150+ мин умеренной активности = 3-4 дня по 30-40 мин. Это норма, не риск.
-  const days = pick(a.activeDays, {
-    "0": 30,
-    "1-2": 14,
-    "3-4": 2, // ВОЗ-норма
-    "5-7": 0,
-  } as const);
-  const sit = pick(a.sittingHours, {
-    "<4": 0,
-    "4-6": 4, // среднестатистический офис, не критично
-    "6-8": 14,
-    "8+": 26,
-  } as const);
-  const raw = days * 0.6 + sit * 0.4;
-  const score = Math.max(0, 100 - raw * 2);
-  return {
-    key: "movement",
-    label: "Движение и активность",
-    score0to100: Math.round(score),
-    velocityContribution: 0,
-    yearsLifeLost: 0,
-    weight: 0.18,
-    verdict: verdictFor(score),
-  };
-};
-
 const nutritionDomain = (a: Answers): DomainScore => {
   const processed = pick(a.processedFood, {
     almost_never: 0,
-    "1-4mo": 3, // редкие исключения — не проблема
-    "3-6wk": 18,
-    daily: 32,
+    "1-4mo": 3,
+    "2-3wk": 14,
+    "4-6wk": 24,
+    daily: 34,
   } as const);
   const veg = pick(a.veggiesFruits, {
     "3plus_daily": 0,
-    "1-2_daily": 4, // ниже идеала, но приемлемо
+    "1-2_daily": 4,
     "3-6_week": 18,
     "<3_week": 30,
   } as const);
   const water = pick(a.water, {
     "2plus_l": 0,
-    "1.5-2l": 0, // научная норма
+    "1.5-2l": 0,
     "1-1.5l": 10,
     "<1l": 22,
   } as const);
-  const raw = processed * 0.45 + veg * 0.35 + water * 0.2;
+  const raw = processed * 0.5 + veg * 0.3 + water * 0.2;
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "nutrition",
@@ -284,36 +297,17 @@ const nutritionDomain = (a: Answers): DomainScore => {
   };
 };
 
-const socialDomain = (a: Answers): DomainScore => {
-  const raw = pick(a.socialConnections, {
-    almost_daily: 0,
-    few_per_week: 3, // здоровый паттерн
-    few_per_month: 18,
-    rarely: 30,
-  } as const);
-  const score = Math.max(0, 100 - raw * 2);
-  return {
-    key: "social",
-    label: "Социальные связи",
-    score0to100: Math.round(score),
-    velocityContribution: 0,
-    yearsLifeLost: 0,
-    weight: 0.1,
-    verdict: verdictFor(score),
-  };
-};
-
 const habitsDomain = (a: Answers): DomainScore => {
   const alc = pick(a.alcohol, {
     never: 0,
-    rare: 0, // 1-5 раз в год ≈ не пьёт
+    rare: 0,
     "1-2wk": 10,
     "3-4wk": 22,
     daily: 36,
   } as const);
   const nic = pick(a.nicotine, {
     never: 0,
-    quit_1yr_plus: 0, // вернулся к базовой линии
+    quit_1yr_plus: 0,
     quit_under_1yr: 8,
     sometimes: 22,
     regular: 38,
@@ -342,30 +336,45 @@ const bmiAnalysis = (a: Answers) => {
   const h = typeof a.heightCm === "number" ? a.heightCm : 0;
   const w = typeof a.weightKg === "number" ? a.weightKg : 0;
   if (h < 100 || w < 30) {
-    return { bmi: null as number | null, category: "unknown" as const, velocityMod: 0 };
+    return {
+      bmi: null as number | null,
+      category: "unknown" as const,
+      waistCategory: "unknown" as const,
+      velocityMod: 0,
+      bmiMod: 0,
+      waistMod: 0,
+    };
   }
   const bmi = w / Math.pow(h / 100, 2);
   let category: "underweight" | "normal" | "overweight" | "obese" = "normal";
-  let mod = 0;
-  if (bmi < 18.5) {
-    category = "underweight";
-    mod = 2;
-  } else if (bmi < 25) {
-    category = "normal";
-    mod = -2;
-  } else if (bmi < 30) {
-    category = "overweight";
-    mod = 3;
-  } else {
-    category = "obese";
-    mod = 8;
+  let bmiMod = 0;
+  if (bmi < 18.5) { category = "underweight"; bmiMod = 2; }
+  else if (bmi < 25) { category = "normal"; bmiMod = -2; }
+  else if (bmi < 30) { category = "overweight"; bmiMod = 3; }
+  else { category = "obese"; bmiMod = 8; }
+
+  if (a.activeDays === "5-7" && bmiMod > 0) bmiMod = Math.max(0, bmiMod - 2);
+
+  let waistMod = 0;
+  let waistCategory: "normal" | "elevated" | "high" | "unknown" = "unknown";
+  const waist = a.waistCm;
+  if (waist !== null && waist !== undefined && waist > 0 && a.gender) {
+    const thresholds = a.gender === "male"
+      ? { low: 94, high: 102 }
+      : { low: 80, high: 88 };
+    if (waist >= thresholds.high) { waistMod = 7; waistCategory = "high"; }
+    else if (waist >= thresholds.low) { waistMod = 3; waistCategory = "elevated"; }
+    else { waistCategory = "normal"; }
   }
-  // BMI у физически активных людей завышает — скидываем часть штрафа,
-  // если активность 5-7 дней в неделю.
-  if (a.activeDays === "5-7" && mod > 0) {
-    mod = Math.max(0, mod - 2);
-  }
-  return { bmi: Math.round(bmi * 10) / 10, category, velocityMod: mod };
+
+  return {
+    bmi: Math.round(bmi * 10) / 10,
+    category,
+    waistCategory,
+    velocityMod: bmiMod + waistMod,
+    bmiMod,
+    waistMod,
+  };
 };
 
 export function calculateScore(a: Answers): ScoreResult {
@@ -374,15 +383,13 @@ export function calculateScore(a: Answers): ScoreResult {
   const movement = movementDomain(a);
   const nutrition = nutritionDomain(a);
   const habits = habitsDomain(a);
-  const social = socialDomain(a);
 
   const maxContribMap: Record<DomainKey, number> = {
-    stress: 12,
-    sleep: 16,
-    movement: 14,
-    nutrition: 12,
-    habits: 20,
-    social: 8,
+    habits: 22,
+    sleep: 18,
+    movement: 16,
+    stress: 13,
+    nutrition: 13,
   };
 
   const applyContrib = (d: DomainScore): DomainScore => {
@@ -402,7 +409,6 @@ export function calculateScore(a: Answers): ScoreResult {
     movement: markGoal(applyContrib(movement)),
     nutrition: markGoal(applyContrib(nutrition)),
     habits: markGoal(applyContrib(habits)),
-    social: markGoal(applyContrib(social)),
   };
 
   const bmi = bmiAnalysis(a);
@@ -412,25 +418,29 @@ export function calculateScore(a: Answers): ScoreResult {
   );
   const agingVelocityPct = Math.max(-5, Math.min(40, lifestyleVelocity + bmi.velocityMod));
 
-  // ── Waterfall (доли в «годах жизни» распределяем пропорционально вкладу delta) ──
   type WfBaseRow = { key: DomainKey | "bmi"; label: string; delta: number };
   const wfBase: WfBaseRow[] = [
     ...Object.values(domains)
       .map((d) => ({ key: d.key, label: d.label, delta: d.velocityContribution }))
       .sort((x, y) => y.delta - x.delta),
   ];
-  // BMI включаем в waterfall только если он является акселератором (mod > 0).
-  // Нормальный BMI (mod < 0) уже снижает итоговую скорость, но отдельной строкой в
-  // "потерянных годах" не отображаем — это запутывает (отрицательные yearsLost).
   if (bmi.velocityMod > 0) {
     const bmiDelta = Math.round(bmi.velocityMod * 10) / 10;
     const insertIdx = wfBase.findIndex((item) => item.delta < bmiDelta);
-    const bmiRow: WfBaseRow = { key: "bmi", label: "Индекс массы тела", delta: bmiDelta };
+    const bmiRow: WfBaseRow = { key: "bmi", label: "Индекс массы тела / талия", delta: bmiDelta };
     if (insertIdx === -1) wfBase.push(bmiRow);
     else wfBase.splice(insertIdx, 0, bmiRow);
   }
 
-  const yearsLifeLostTotalRounded = lifeYearsLostFromVelocity(agingVelocityPct);
+  // Вариант A: «годы здоровой жизни» — одна модель на всех экранах.
+  // Сколько вы сейчас реализуете из потенциала Li et al. (12 лет).
+  const healthspanYearsRaw = Object.values(domains).reduce(
+    (sum, d) => sum + (d.score0to100 / 100) * HEALTHSPAN_MAX_YEARS[d.key],
+    0,
+  );
+  // Итоговая потеря для шапки/вердикта = то же число, что и gap в HealthspanStrip.
+  const yearsLifeLostTotalRounded =
+    Math.round(Math.max(0, HEALTHSPAN_TOTAL_YEARS - healthspanYearsRaw) * 10) / 10;
   const rawWfSum = wfBase.reduce((s, w) => s + w.delta, 0);
 
   let velocityWaterfall: WaterfallItem[] = wfBase.map((w) => ({
@@ -441,7 +451,6 @@ export function calculateScore(a: Answers): ScoreResult {
   }));
 
   if (rawWfSum > 0 && yearsLifeLostTotalRounded > 0) {
-    // Метод наибольших остатков: floor + добавляем по 0.1 элементам с наибольшим остатком.
     const STEP = 0.1;
     const totalUnits = Math.round(yearsLifeLostTotalRounded / STEP);
     const rawValues = wfBase.map((w) => (w.delta / rawWfSum) * yearsLifeLostTotalRounded);
@@ -472,10 +481,8 @@ export function calculateScore(a: Answers): ScoreResult {
     movement: enrichYears(domains.movement),
     nutrition: enrichYears(domains.nutrition),
     habits: enrichYears(domains.habits),
-    social: enrichYears(domains.social),
   };
 
-  // Ранжируем по вкладу, но ломаем ничью в пользу домена цели:
   const allDomains = Object.values(domainsOut);
   const rankedAccelerators = [...allDomains].sort((x, y) => {
     const diff = y.velocityContribution - x.velocityContribution;
@@ -486,25 +493,14 @@ export function calculateScore(a: Answers): ScoreResult {
     return diff;
   });
   const protectors = allDomains.filter((d) => d.score0to100 >= 75);
-  // Исключаем домены с вердиктом "strong" из топ-3 проблем, если есть более слабые.
-  // Если всё сильное — берём топ-3 как есть (хоть что-то показать).
   const nonStrongAccelerators = rankedAccelerators.filter((d) => d.verdict !== "strong");
   const topThree = (nonStrongAccelerators.length > 0 ? nonStrongAccelerators : rankedAccelerators).slice(0, 3);
 
-  const longyScore = Math.max(
-    1,
-    Math.min(100, Math.round(100 - agingVelocityPct * 2)),
-  );
+  const longyScore = Math.max(1, Math.min(100, Math.round(100 - agingVelocityPct * 2)));
 
   void chronoAgeFor(a);
 
-  const healthspanYears =
-    Math.round(
-      allDomains.reduce(
-        (sum, d) => sum + (d.score0to100 / 100) * HEALTHSPAN_MAX_YEARS[d.key],
-        0,
-      ) * 10,
-    ) / 10;
+  const healthspanYears = Math.round(healthspanYearsRaw * 10) / 10;
 
   const TARGET_SCORE = 75;
   const projectionTargets = topThree.filter((d) => d.score0to100 < TARGET_SCORE);
@@ -514,11 +510,20 @@ export function calculateScore(a: Answers): ScoreResult {
     velocitySaved += Math.max(0, d.velocityContribution - newContrib);
   });
   const velocityTarget = Math.max(-5, Math.min(40, agingVelocityPct - velocitySaved));
-  const longyScoreTarget = Math.max(
-    1,
-    Math.min(100, Math.round(100 - velocityTarget * 2)),
+  const longyScoreTarget = Math.max(1, Math.min(100, Math.round(100 - velocityTarget * 2)));
+  // yearsLifeLostTarget считаем той же healthspan-моделью: подтягиваем
+  // targets-домены до TARGET_SCORE и пересобираем сумму.
+  const targetKeys = new Set(projectionTargets.map((d) => d.key));
+  const healthspanYearsTargetRaw = allDomains.reduce((sum, d) => {
+    const effectiveScore = targetKeys.has(d.key)
+      ? Math.max(d.score0to100, TARGET_SCORE)
+      : d.score0to100;
+    return sum + (effectiveScore / 100) * HEALTHSPAN_MAX_YEARS[d.key];
+  }, 0);
+  const yearsLifeLostTarget = Math.max(
+    0,
+    Math.round((HEALTHSPAN_TOTAL_YEARS - healthspanYearsTargetRaw) * 10) / 10,
   );
-  const yearsLifeLostTarget = lifeYearsLostFromVelocity(velocityTarget);
   const projection: Projection = {
     longyScoreNow: longyScore,
     longyScoreTarget,
@@ -537,6 +542,7 @@ export function calculateScore(a: Answers): ScoreResult {
     longyScoreBand: longyBandFor(longyScore),
     bmi: bmi.bmi,
     bmiCategory: bmi.category,
+    waistCategory: bmi.waistCategory,
     domains: domainsOut,
     rankedAccelerators,
     protectors,

@@ -13,13 +13,14 @@ import {
   longyScoreLabel,
   goalDomainHeadline,
   coverSubtitle,
+  coverCTA,
   lifeYearsHeadline,
   lifeYearsModelNote,
 } from "@/lib/insights";
 import { Speedometer } from "@/components/Speedometer";
 import { RadarChart } from "@/components/RadarChart";
 
-const STORAGE_KEY = "longy_audit_answers_v1";
+const STORAGE_KEY = "longy_audit_answers_v2";
 
 export default function ResultPage() {
   const [answers, setAnswers] = useState<Answers | null>(null);
@@ -141,7 +142,7 @@ export default function ResultPage() {
             {coverSubtitle(score)}
           </p>
           <p className="text-white/35 text-xs mt-1 tracking-wide">
-            Методология: Li et al., J Intern Med 2024 · 6 доменов · 20 параметров
+            Методология: Li et al., J Intern Med 2024 · 5 доменов · 21 параметр + хронические заболевания
           </p>
         </div>
 
@@ -260,7 +261,7 @@ export default function ResultPage() {
 
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="card p-8">
-            <div className="mono text-xs text-white/50">6 ДОМЕНОВ</div>
+            <div className="mono text-xs text-white/50">5 ДОМЕНОВ</div>
             <h3 className="display text-2xl mt-2">Карта вашего состояния</h3>
             <div className="mt-4 grid place-items-center">
               <RadarChart domains={Object.values(score.domains)} size={320} />
@@ -310,19 +311,47 @@ export default function ResultPage() {
           </div>
         </div>
 
-        <div className="mt-14 card p-10 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-          <div>
-            <h3 className="display text-2xl md:text-3xl">
-              Скачайте полный аудит в PDF
-            </h3>
-            <p className="text-white/60 mt-2 max-w-xl">
-              Персональный отчёт на 6 страниц: обложка, вердикт, топ-3 ускорителя, радар
-              доменов, сильные стороны и разбор, как Longy возьмёт ведение на себя.
-            </p>
+        <div className="mt-14 card p-10 flex flex-col gap-8">
+          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+            <div>
+              <h3 className="display text-2xl md:text-3xl">
+                Скачайте полный аудит в PDF
+              </h3>
+              <p className="text-white/60 mt-2 max-w-xl">
+                Персональный отчёт на 7 страниц: обложка, вердикт, топ-3 ускорителя, радар
+                доменов, сильные стороны и разбор, как Longy возьмёт ведение на себя.
+              </p>
+            </div>
+            <button onClick={onDownload} disabled={downloading} className="btn-primary disabled:opacity-60">
+              {downloading ? "Готовим PDF…" : "Скачать PDF"}
+            </button>
           </div>
-          <button onClick={onDownload} disabled={downloading} className="btn-primary disabled:opacity-60">
-            {downloading ? "Готовим PDF…" : "Скачать PDF"}
-          </button>
+
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+            <div>
+              <h3 className="display text-2xl md:text-3xl">
+                Получить глубокий аудит в приложении
+              </h3>
+              <p className="text-white/60 mt-2 max-w-xl">{coverCTA(score)}</p>
+            </div>
+            <a
+              href="https://longy.health/app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary"
+            >
+              Открыть приложение Longy
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M5 12h14M13 6l6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
+          </div>
         </div>
       </section>
     </main>

@@ -12,7 +12,7 @@ export default function LandingPage() {
           </div>
           <span className="display text-xl tracking-tight">Longy</span>
         </div>
-        <span className="chip">Beta · Audit v1</span>
+        <span className="chip">Beta · Audit v2</span>
       </nav>
 
       <section className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 pt-16 md:pt-24 pb-20">
@@ -31,8 +31,9 @@ export default function LandingPage() {
           </h1>
 
           <p className="max-w-2xl text-white/70 text-lg md:text-xl leading-relaxed">
-            23 вопроса. 5 минут. Персональный PDF-отчёт с разбором трёх ваших самых
-            сильных ускорителей старения — и конкретным планом, как их развернуть.
+            ~5 минут. Персональный PDF-отчёт с разбором трёх ваших самых сильных
+            ускорителей старения — с учётом ваших хронических заболеваний и барьеров,
+            и конкретным планом, как их развернуть.
           </p>
 
           <div className="flex flex-wrap gap-3">

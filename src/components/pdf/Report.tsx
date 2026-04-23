@@ -24,9 +24,16 @@ import {
   longyScoreLabel,
   goalDomainHeadline,
   coverSubtitle,
-  lifeYearsModelNote,
+  coverCTA,
   verdictLifeYearsHeadlineLines,
   buildMaintenanceTips,
+  velocityZoneDescription,
+  longyScoreExplanation,
+  pickRightCardMetric,
+  pickMainDriver,
+  longyForGoalBlock,
+  EIGHT_WEEK_PROMISE,
+  formatBioAgeDelta,
 } from "@/lib/insights";
 import { Answers } from "@/lib/types";
 
@@ -67,7 +74,10 @@ const styles = StyleSheet.create({
   page: {
     backgroundColor: PALETTE.bg,
     color: PALETTE.text,
-    padding: 40,
+    paddingTop: 40,
+    paddingLeft: 40,
+    paddingRight: 40,
+    paddingBottom: 70,
     fontFamily: "Geist",
     fontSize: 11,
     lineHeight: 1.55,
@@ -102,20 +112,18 @@ const styles = StyleSheet.create({
   verdictTitle: {
     fontFamily: "Geist",
     fontWeight: 700,
-    fontSize: 20,
-    lineHeight: 1.55,
-    letterSpacing: -0.2,
+    fontSize: 28,
+    lineHeight: 1.25,
+    letterSpacing: -0.6,
     color: PALETTE.text,
-    maxWidth: 470,
   },
   verdictTitleFigures: {
     fontFamily: "Geist",
     fontWeight: 700,
-    fontSize: 21,
-    lineHeight: 1.5,
-    letterSpacing: -0.3,
+    fontSize: 30,
+    lineHeight: 1.2,
+    letterSpacing: -0.8,
     color: PALETTE.text,
-    maxWidth: 470,
   },
   numStat: {
     fontFamily: "Geist",
@@ -150,15 +158,17 @@ const styles = StyleSheet.create({
   },
   pageFooter: {
     position: "absolute",
-    bottom: 24,
+    bottom: 20,
     left: 40,
     right: 40,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: PALETTE.border,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     color: PALETTE.textFaint,
     fontSize: 8,
-    letterSpacing: 1,
-    textTransform: "uppercase",
   },
 });
 
@@ -181,19 +191,17 @@ export const Report: React.FC<ReportProps> = ({
     year: "numeric",
   });
   const name = (answers.name ?? "").trim();
-  const velocity = score.agingVelocityPct;
-  const isAccelerated = velocity > 0;
 
   return (
     <Document title={`Longy audit · ${name || "report"}`}>
       <TitlePage name={name} date={date} />
-      <CoverPage score={score} />
+      <CoverPage score={score} answers={answers} />
       <VerdictPage score={score} answers={answers} />
       <AcceleratorsPage accelerators={accelerators} score={score} />
       <ProjectionPage score={score} />
       <RadarPage score={score} protectors={protectors} />
       <LongyPage answers={answers} />
-      <FinalPage name={name} isAccelerated={isAccelerated} />
+      <FinalPage name={name} score={score} answers={answers} />
     </Document>
   );
 };
@@ -278,16 +286,21 @@ const Header = ({ ordinal, label }: { ordinal: string; label: string }) => (
 
 const Footer = () => (
   <View style={styles.pageFooter} fixed>
-    <Text>Longy Audit · На базе Li et al., J Intern Med 2024</Text>
-    <Text
-      render={({ pageNumber, totalPages }) =>
-        `${String(pageNumber).padStart(2, "0")} / ${String(totalPages).padStart(2, "0")}`
-      }
-    />
+    <View style={{ gap: 2 }}>
+      <Text style={{ color: PALETTE.textMuted, fontSize: 9 }}>longy.ai</Text>
+      <Text style={{ color: PALETTE.textFaint, fontSize: 9 }}>info@longy.ai</Text>
+    </View>
+    <View style={{ gap: 2, alignItems: "flex-end" }}>
+      <Text style={{ color: PALETTE.textMuted, fontSize: 9 }}>Not a clinical diagnosis</Text>
+      <View style={{ flexDirection: "row", gap: 10 }}>
+        <Text style={{ color: PALETTE.textFaint, fontSize: 9 }}>Конфиденциальность</Text>
+        <Text style={{ color: PALETTE.textFaint, fontSize: 9 }}>Условия</Text>
+      </View>
+    </View>
   </View>
 );
 
-const CoverPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
+const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, answers }) => {
   return (
     <Page size="A4" style={styles.page}>
       <Header ordinal="02" label="Обложка" />
@@ -310,13 +323,13 @@ const CoverPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
             marginTop: 2,
           }}
         >
-          Методология: Li et al., J Intern Med 2024 · 6 доменов · 20 параметров
+          Методология: Li et al., J Intern Med 2024 · 5 доменов · 21 параметр + хронические заболевания
         </Text>
       </View>
 
       <View wrap={false} style={{ marginTop: 44, flexDirection: "row", gap: 12 }}>
         <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>Longy Score</Text>
+          <Text style={styles.mono}>Longy Score *</Text>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
             <Text
               style={[
@@ -333,31 +346,70 @@ const CoverPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
           </Text>
         </View>
 
-        <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>Главный драйвер</Text>
-          <Text
-            style={[
-              styles.display,
-              { fontSize: 18, marginTop: 10, lineHeight: 1.15 },
-            ]}
-          >
-            {score.topThree[0]?.label ?? "—"}
-          </Text>
-          <Text style={{ color: PALETTE.warm, marginTop: 10, fontSize: 10 }}>
-            минус ~{(score.topThree[0]?.yearsLifeLost ?? 0).toFixed(1)} лет здоровой жизни
-          </Text>
-        </View>
+        {(() => {
+          const md = pickMainDriver(answers, score);
+          if (!md) {
+            return (
+              <View style={[styles.card, { flex: 1 }]}>
+                <Text style={styles.mono}>Главный драйвер</Text>
+                <Text style={[styles.display, { fontSize: 18, marginTop: 10, lineHeight: 1.15 }]}>—</Text>
+              </View>
+            );
+          }
+          return (
+            <View style={[styles.card, { flex: 1 }]}>
+              <Text style={styles.mono}>Главный драйвер</Text>
+              <Text style={[styles.display, { fontSize: 16, marginTop: 10, lineHeight: 1.2 }]}>
+                {md.headline}
+              </Text>
+              <Text style={{ color: PALETTE.textMuted, marginTop: 6, fontSize: 10, lineHeight: 1.4 }}>
+                {md.subtext}
+              </Text>
+              <Text style={{ color: PALETTE.warm, marginTop: 8, fontSize: 10 }}>
+                ≈{md.domain.yearsLifeLost.toFixed(1)} лет здоровой жизни
+              </Text>
+            </View>
+          );
+        })()}
 
-        <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>Индекс массы тела</Text>
-          <Text style={[styles.numStat, { fontSize: 40, marginTop: 10 }]}>
-            {score.bmi ?? "—"}
-          </Text>
-          <Text style={{ color: PALETTE.textMuted, marginTop: 10, fontSize: 10 }}>
-            {bmiLabel(score.bmiCategory)}
-          </Text>
-        </View>
+        {(() => {
+          const m = pickRightCardMetric(score);
+          const valueColor =
+            m.tone === "danger"
+              ? PALETTE.danger
+              : m.tone === "warn"
+                ? PALETTE.warm
+                : PALETTE.text;
+          return (
+            <View style={[styles.card, { flex: 1 }]}>
+              <Text style={styles.mono}>{m.label}</Text>
+              <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
+                <Text style={[styles.numStat, { fontSize: 40, color: valueColor }]}>
+                  {m.value}
+                </Text>
+                {m.type === "domain" && (
+                  <Text style={{ color: PALETTE.textFaint, fontSize: 14 }}>/ 100</Text>
+                )}
+              </View>
+              <Text style={{ color: PALETTE.textMuted, marginTop: 10, fontSize: 10 }}>
+                {m.sublabel}
+              </Text>
+            </View>
+          );
+        })()}
       </View>
+
+      <Text
+        style={{
+          color: PALETTE.textFaint,
+          fontSize: 8,
+          lineHeight: 1.4,
+          marginTop: 10,
+          maxWidth: 480,
+        }}
+      >
+        * {longyScoreExplanation()}
+      </Text>
 
       <Footer />
     </Page>
@@ -369,10 +421,10 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
   answers,
 }) => {
   const velocity = score.agingVelocityPct;
-  const verdictText =
-    velocity > 0
-    ? `Дальше — водопад: сколько здоровых лет «стоит» каждый домен. Это обратимо: три главных рычага и конкретные шаги по каждому.`
-    : "Вы идёте лучше большинства людей вашего возраста. Задача — закрепить сильные стороны и точечно поднять слабые.";
+  const isGain = score.yearsLifeLostTotal < 0.5;
+  const verdictText = isGain
+    ? "Ниже — разбор по 5 факторам вашего образа жизни. Что уже работает на вас и где ещё есть запас для точечной настройки."
+    : "Ниже — разбор по 5 факторам вашего образа жизни. Сколько лет здоровой жизни «стоит» каждый из них и что можно вернуть за 8 недель с Longy.";
 
   return (
     <Page size="A4" style={styles.page}>
@@ -396,17 +448,6 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
             </View>
           );
         })()}
-        <Text
-          style={{
-            color: PALETTE.textFaint,
-            fontSize: 9,
-            maxWidth: 480,
-            lineHeight: 1.45,
-            marginTop: 2,
-          }}
-        >
-          {lifeYearsModelNote(score)}
-        </Text>
         <Text style={{ color: PALETTE.textMuted, fontSize: 12, maxWidth: 480, marginTop: 6 }}>
           {verdictText}
         </Text>
@@ -416,16 +457,41 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
         <HealthspanStrip score={score} />
       </View>
 
-      <View wrap={false} style={{ marginTop: 18, alignItems: "center" }}>
+      <View wrap={false} style={{ marginTop: 18, alignItems: "center", gap: 6 }}>
+        <Text style={[styles.mono, { textAlign: "center" }]}>
+          Где вы сейчас находитесь по вашей скорости старения
+        </Text>
         <SpeedometerSvg velocity={velocity} width={300} />
+        <Text
+          style={{
+            color: PALETTE.text,
+            fontSize: 11,
+            fontWeight: "bold",
+            textAlign: "center",
+            maxWidth: 440,
+            marginTop: 4,
+            lineHeight: 1.45,
+          }}
+        >
+          {velocityZoneDescription(velocity)}
+        </Text>
       </View>
 
-      <View wrap={false} style={{ marginTop: 10, flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+      <View
+        wrap={false}
+        style={{
+          marginTop: 10,
+          flexDirection: "row",
+          gap: 8,
+          flexWrap: "wrap",
+          justifyContent: "center",
+        }}
+      >
         <LegendPill color={PALETTE.calm} label="Ниже нормы" />
-        <LegendPill color={PALETTE.accent} label="Норма 0–8%" />
-        <LegendPill color={PALETTE.amber} label="Зона внимания 8–18%" />
-        <LegendPill color={PALETTE.warm} label="Риск 18–28%" />
-        <LegendPill color={PALETTE.danger} label="Критично 28%+" />
+        <LegendPill color={PALETTE.accent} label="Норма" />
+        <LegendPill color={PALETTE.amber} label="Внимание" />
+        <LegendPill color={PALETTE.warm} label="Риск" />
+        <LegendPill color={PALETTE.danger} label="Критично" />
       </View>
 
       <View wrap={false} style={{ marginTop: 24, flexDirection: "row", gap: 10 }}>
@@ -491,6 +557,35 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
             >
               {g.reason}
             </Text>
+            {(() => {
+              const lg = longyForGoalBlock(answers.goal);
+              if (!lg) return null;
+              return (
+                <View style={{ marginTop: 12, gap: 6 }}>
+                  <Text style={[styles.mono, { color: PALETTE.accent }]}>
+                    Что Longy делает под вашу цель
+                  </Text>
+                  {lg.bullets.map((b, i) => (
+                    <View key={i} style={{ flexDirection: "row", gap: 6 }}>
+                      <Text style={{ color: PALETTE.accent, fontSize: 10 }}>·</Text>
+                      <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.5, flex: 1 }}>
+                        {b}
+                      </Text>
+                    </View>
+                  ))}
+                  <Text
+                    style={{
+                      color: PALETTE.accent,
+                      fontSize: 11,
+                      fontWeight: "bold",
+                      marginTop: 4,
+                    }}
+                  >
+                    {lg.cta}
+                  </Text>
+                </View>
+              );
+            })()}
           </View>
         );
       })()}
@@ -507,11 +602,10 @@ const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
   const fillPct = Math.max(0, Math.min(1, years / max));
   const gapColor =
     gap >= 5 ? PALETTE.danger : gap >= 3 ? PALETTE.warm : gap >= 1.5 ? PALETTE.amber : PALETTE.accent;
-  const lost = score.yearsLifeLostTotal;
   const narrative =
     gap < 1
-      ? `Ваш образ жизни реализует почти весь потенциал Li et al. (+${years.toFixed(1)} из +${max}). Сводная потеря по модели отчёта — ≈${lost.toFixed(1)} лет здоровой жизни — согласуется с этим запасом.`
-      : `По Li et al. оптимум даёт +${max} лет здоровой жизни; вы реализуете +${years.toFixed(1)} — ${gap} лет ещё «на столе». Сводно модель оценивает потерю ≈${lost.toFixed(1)} здоровых лет из-за текущего образа жизни.`;
+      ? `Ваш образ жизни уже реализует почти весь потенциал — +${years.toFixed(1)} из возможных +${max} здоровых лет.* Отчёт подсвечивает точки, где можно дожать остаток.`
+      : `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас вы набираете +${years.toFixed(1)} — ещё +${gap} остаются в запасе и возвращаются привычками.`;
 
   return (
     <View
@@ -543,12 +637,12 @@ const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
               { fontSize: 36, color: gapColor },
             ]}
           >
-            −{gap.toFixed(1)}
+            +{gap.toFixed(1)}
           </Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: 11 }}>лет на столе</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: 11 }}>лет возможно получить</Text>
         </View>
         <Text style={{ color: PALETTE.textMuted, fontSize: 9, marginTop: 4 }}>
-          реализовано +{years.toFixed(1)} из +{max}
+          сейчас у вас +{years.toFixed(1)} из максимальных +{max}
         </Text>
       </View>
 
@@ -765,45 +859,52 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
           }}
         >
           <Text style={styles.mono}>Если закрыть топ-3 · 8 недель с Longy</Text>
-          <View style={{ marginTop: 14, flexDirection: "row", gap: 18, alignItems: "center" }}>
+
+          <View style={{ marginTop: 12, flexDirection: "row", gap: 18, alignItems: "center" }}>
             <ImpactPreviewSvg
               scoreNow={proj.longyScoreNow}
               scoreTarget={proj.longyScoreTarget}
               width={230}
               height={130}
             />
-            <View style={{ flex: 1, gap: 8 }}>
+            <View style={{ flex: 1, gap: 6 }}>
               <Text style={[styles.display, { fontSize: 18, lineHeight: 1.25 }]}>
-                Longy Score вырастет с{" "}
-                <Text style={{ color: PALETTE.textMuted }}>{proj.longyScoreNow}</Text>{" "}
-                до <Text style={{ color: PALETTE.accent }}>{proj.longyScoreTarget}</Text>
+                {formatBioAgeDelta(proj.yearsLifeLostNow - proj.yearsLifeLostTarget)}
               </Text>
               <Text style={{ color: PALETTE.textMuted, fontSize: 11, lineHeight: 1.55 }}>
-                Потеря здоровых лет снизится с ≈
-                <Text style={{ color: PALETTE.text }}>{proj.yearsLifeLostNow.toFixed(1)}</Text>{" "}
-                до ≈
-                <Text style={{ color: PALETTE.accent }}>{proj.yearsLifeLostTarget.toFixed(1)}</Text>{" "}
-                лет (та же модель). Проекция при закрытии трёх главных ускорителей до 75/100 —
-                достижимая планка за 8 недель целенаправленной работы.
+                Longy Score вырастет с{" "}
+                <Text style={{ color: PALETTE.textMuted }}>{proj.longyScoreNow}</Text>{" "}
+                до <Text style={{ color: PALETTE.accent }}>{proj.longyScoreTarget}</Text>.
+                Вот что конкретно Longy делает по трём главным рычагам:
               </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                {proj.targets.map((d) => (
-                  <View
-                    key={d.key}
+            </View>
+          </View>
+
+          <View style={{ marginTop: 14, gap: 10 }}>
+            {proj.targets.map((d) => {
+              const bullets = EIGHT_WEEK_PROMISE[d.key] ?? [];
+              return (
+                <View key={d.key} style={{ gap: 4 }}>
+                  <Text
                     style={{
-                      borderRadius: 999,
-                      paddingVertical: 3,
-                      paddingHorizontal: 9,
-                      borderWidth: 1,
-                      borderColor: PALETTE.accent,
-                      backgroundColor: "#FEF0EB",
+                      color: PALETTE.accent,
+                      fontSize: 11,
+                      fontWeight: "bold",
                     }}
                   >
-                    <Text style={{ fontSize: 9, color: PALETTE.accent }}>{d.label}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
+                    {d.label}
+                  </Text>
+                  {bullets.map((b, i) => (
+                    <View key={i} style={{ flexDirection: "row", gap: 6, marginLeft: 6 }}>
+                      <Text style={{ color: PALETTE.accent, fontSize: 10 }}>·</Text>
+                      <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.5, flex: 1 }}>
+                        {b}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })}
           </View>
         </View>
       )}
@@ -848,7 +949,7 @@ const RadarPage: React.FC<{
     <Page size="A4" style={styles.page}>
       <Header ordinal="06" label="Карта состояния" />
       <View style={{ gap: 12 }}>
-        <Text style={styles.chip}>6 доменов</Text>
+        <Text style={styles.chip}>5 доменов</Text>
         <Text style={[styles.display, { fontSize: 26 }]}>
           Где вы сейчас — по каждой оси здоровья
         </Text>
@@ -964,66 +1065,153 @@ const LongyPage: React.FC<{ answers: Answers }> = () => (
   </Page>
 );
 
-const FinalPage: React.FC<{ name: string; isAccelerated: boolean }> = ({ name }) => (
-  <Page size="A4" style={styles.page}>
-    <Header ordinal="08" label="Следующий шаг" />
-    <View style={{ gap: 14 }}>
-      <Text style={styles.chip}>Ваш следующий шаг</Text>
-      <Text style={[styles.display, { fontSize: 32, lineHeight: 1.1 }]}>
-        {name ? `${name}, ` : ""}самое ценное{"\n"}
-        начинается <Text style={{ color: PALETTE.accent }}>на следующей неделе</Text>
-      </Text>
-      <Text style={{ color: PALETTE.textMuted, fontSize: 12, maxWidth: 480 }}>
-        Этот отчёт — точка отсчёта. Через 8 недель с Longy вы увидите, как оценка потери здоровых
-        лет снижается в режиме реального времени. Для этого нужно одно: дать Longy начать вас вести.
-      </Text>
-    </View>
+const FinalPage: React.FC<{
+  name: string;
+  score: ScoreResult;
+  answers: Answers;
+}> = ({ name, score, answers }) => {
+  const conditionsRaw = answers.conditions ?? [];
+  const hasConditions = conditionsRaw.some(
+    (c) => c && c !== "none" && c !== "prefer_not_to_say",
+  );
+  const cta = coverCTA(score);
 
-    <View style={{ marginTop: 28, gap: 10 }}>
-      <RoadmapRow num="7 дней" text="Внедряете #1 ускоритель через персональный протокол Longy" />
-      <RoadmapRow num="21 день" text="Формируется устойчивая привычка — первая видимая динамика" />
-      <RoadmapRow num="8 недель" text="Второй и третий ускорители на контроле; рост качества сна и энергии" />
-      <RoadmapRow num="6 месяцев" text="Потеря здоровых лет стабильно в комфортной зоне" />
-    </View>
+  return (
+    <Page size="A4" style={styles.page}>
+      <Header ordinal="08" label="Следующий шаг" />
+      <View style={{ gap: 14 }}>
+        <Text style={styles.chip}>Глубокий аудит в приложении Longy</Text>
+        <Text style={[styles.display, { fontSize: 30, lineHeight: 1.12 }]}>
+          {name ? `${name}, ` : ""}этот отчёт — первый срез.{"\n"}
+          <Text style={{ color: PALETTE.accent }}>Глубже мы идём в приложении.</Text>
+        </Text>
+        <Text style={{ color: PALETTE.textMuted, fontSize: 12, maxWidth: 480, lineHeight: 1.55 }}>
+          В Longy мы подключаем данные с ваших устройств (Whoop, Oura, Apple Watch),
+          анализируем сон, HRV, стресс и активность в динамике, подбираем 5–10 анализов
+          под вашу картину и составляем протокол на 8 недель.
+          {hasConditions ? " С учётом ваших диагнозов и противопоказаний." : ""}
+        </Text>
+      </View>
 
-    <View
-      style={{
-        marginTop: 30,
-        borderRadius: 20,
-        padding: 20,
-        backgroundColor: PALETTE.bgSoft,
-        borderWidth: 1,
-        borderColor: PALETTE.accent,
-      }}
-    >
-      <Text style={[styles.mono, { color: PALETTE.accent }]}>Доступ</Text>
-      <Text style={[styles.display, { fontSize: 20, marginTop: 6 }]}>
-        Войдите в ранний waitlist Longy
-      </Text>
-      <Text
+      <View style={{ marginTop: 22, gap: 10 }}>
+        <RoadmapRow num="7 дней" text="Подключение устройств и первые 3 шага протокола" />
+        <RoadmapRow num="21 день" text="Видимые изменения HRV, сна и энергии" />
+        <RoadmapRow
+          num="8 недель"
+          text={`Проекция: Longy Score ${score.longyScore} → ${score.projection.longyScoreTarget}, минус ~${Math.max(
+            0,
+            Math.round(
+              (score.yearsLifeLostTotal - score.projection.yearsLifeLostTarget) * 10,
+            ) / 10,
+          )} лет потерь здоровья`}
+        />
+        <RoadmapRow num="6 месяцев" text="Повторные анализы, динамика биомаркеров, корректировка плана" />
+      </View>
+
+      <View
         style={{
-          color: PALETTE.textMuted,
-          fontSize: 11,
-          marginTop: 8,
-          lineHeight: 1.55,
+          marginTop: 24,
+          borderRadius: 20,
+          padding: 20,
+          backgroundColor: PALETTE.bgSoft,
+          borderWidth: 1,
+          borderColor: PALETTE.accent,
         }}
       >
-        Первые пользователи получают персональную настройку протокола от команды методологов
-        под руководством Станислава Скакуна и 3 месяца расширенной подписки.
-      </Text>
-      <Text style={{ color: PALETTE.accent, fontSize: 12, marginTop: 12, fontWeight: 600 }}>
-        longy.health/waitlist
-      </Text>
-    </View>
+        <Text style={[styles.mono, { color: PALETTE.accent }]}>Что дальше</Text>
+        <Text style={[styles.display, { fontSize: 18, marginTop: 6, lineHeight: 1.25 }]}>
+          Получить глубокий аудит в приложении
+        </Text>
+        <Text
+          style={{
+            color: PALETTE.textMuted,
+            fontSize: 11,
+            marginTop: 8,
+            lineHeight: 1.55,
+          }}
+        >
+          {cta}
+        </Text>
+        <Text style={{ color: PALETTE.accent, fontSize: 12, marginTop: 12, fontWeight: 600 }}>
+          longy.health/app
+        </Text>
+      </View>
 
-    <Text style={{ color: PALETTE.textFaint, fontSize: 9, marginTop: 24, lineHeight: 1.5 }}>
-      Методология на базе исследования Гарварда о +12 лет жизни
-      (pmc.ncbi.nlm.nih.gov/articles/PMC11641623). Longy не заменяет медицинский диагноз;
-      рекомендации носят образовательный характер.
+      <ScientificCredibilityBlock />
+
+      <Footer />
+    </Page>
+  );
+};
+
+const SCIENTIFIC_INSTRUMENTS = [
+  "University of Pennsylvania",
+  "National Institutes of Health",
+  "International Mediation Campus",
+  "Duke Health",
+];
+
+const ScientificCredibilityBlock: React.FC = () => (
+  <View
+    wrap={false}
+    style={{
+      marginTop: 18,
+      borderRadius: 18,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: PALETTE.border,
+      backgroundColor: "#FFFFFF",
+    }}
+  >
+    <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.55 }}>
+      Отчёт построен на клинически валидированных скрининговых инструментах с
+      подтверждёнными психометрическими свойствами: Insomnia Severity Index (ISI-7) для
+      оценки сна, Perceived Stress Scale (PSS-10) и PROMIS Fatigue 7a для стресса и
+      энергии, Duke Activity Status Index (DASI) и IPAQ-SF для функционального статуса и
+      физической активности, Mini-EAT для питания.
     </Text>
-
-    <Footer />
-  </Page>
+    <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.55, marginTop: 10 }}>
+      * Методология Longy вдохновлена исследованием Li et al. (Harvard Medical School,
+      J Intern Med 2024) о 5 факторах долголетия, дающих до +12 лет здоровой жизни на
+      выборке 2 млн+ человек. Применён собственный алгоритм калибровки под
+      скрининговый контекст. Longy — wellness-сервис: выводы не заменяют медицинскую
+      диагностику и консультацию врача. При хронических заболеваниях обсуждайте любые
+      изменения образа жизни с лечащим врачом.
+    </Text>
+    <View
+      style={{
+        marginTop: 14,
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+      }}
+    >
+      {SCIENTIFIC_INSTRUMENTS.map((label) => (
+        <View
+          key={label}
+          style={{
+            borderWidth: 1,
+            borderColor: PALETTE.border,
+            borderRadius: 8,
+            paddingVertical: 6,
+            paddingHorizontal: 10,
+            backgroundColor: PALETTE.bgSoft,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 9,
+              color: PALETTE.textMuted,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+            }}
+          >
+            {label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  </View>
 );
 
 const RoadmapRow = ({ num, text }: { num: string; text: string }) => (
@@ -1295,8 +1483,7 @@ const shortLabelFor = (key: string, fallback: string): string => {
     movement: "Движение",
     nutrition: "Питание",
     habits: "Привычки",
-    social: "Связи",
-    bmi: "ИМТ",
+    bmi: "ИМТ / талия",
   };
   return map[key] ?? fallback;
 };
@@ -1515,7 +1702,6 @@ const RADAR_SHORT_LABEL: Record<DomainKey, string> = {
   nutrition: "Питание",
   stress: "Стресс",
   habits: "Привычки",
-  social: "Связи",
 };
 
 const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) => {
@@ -1547,8 +1733,8 @@ const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) =
     return `${p.x},${p.y}`;
   });
 
-  const labelBoxWidth = 60;
-  const labelBoxHeight = 14;
+  const labelBoxWidth = 80;
+  const labelBoxHeight = 26;
 
   return (
     <View style={{ width: size, height: size, position: "relative" }}>
@@ -1618,9 +1804,19 @@ const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) =
                 color: d.isGoalFocus ? PALETTE.accent : PALETTE.textMuted,
                 fontWeight: d.isGoalFocus ? 600 : 400,
                 letterSpacing: 0.3,
+                textAlign: "center",
               }}
             >
               {RADAR_SHORT_LABEL[d.key]}
+            </Text>
+            <Text
+              style={{
+                fontSize: 8,
+                color: PALETTE.textFaint,
+                marginTop: 1,
+              }}
+            >
+              {d.score0to100}/100
             </Text>
           </View>
         );

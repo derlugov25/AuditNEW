@@ -30,6 +30,7 @@ export interface NumericQuestion {
   min: number;
   max: number;
   suffix: string;
+  optional?: boolean;
 }
 
 export interface TextQuestion {
@@ -76,30 +77,39 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    id: "foggyDays",
+    id: "foggyHours",
     type: "single",
     step: "energy",
-    title:
-      "Сколько дней за последнюю неделю вам было сложно ясно мыслить или сконцентрироваться?",
+    title: "Сколько времени за последнюю неделю вам было трудно ясно мыслить или сконцентрироваться?",
     options: [
-      { value: "0", label: "0 дней" },
-      { value: "1-2", label: "1–2 дня" },
-      { value: "3-4", label: "3–4 дня" },
-      { value: "5-7", label: "5–7 дней" },
+      { value: "<1h", label: "Меньше часа" },
+      { value: "1-3h", label: "1–3 часа" },
+      { value: "3-7h", label: "3–7 часов" },
+      { value: "7-14h", label: "7–14 часов" },
+      { value: "14-20h", label: "14–20 часов" },
+      { value: "20-40h", label: "20–40 часов" },
+      { value: "40+h", label: "Больше 40 часов" },
     ],
   },
   {
-    id: "overwhelmed",
-    type: "single",
+    id: "conditions",
+    type: "multi",
     step: "energy",
-    title:
-      "Сколько раз за последний месяц вы чувствовали, что трудностей так много, что вы не справляетесь?",
-    hint: "Энергия, фокус и стресс тесно связаны",
+    title: "Есть ли у вас хронические заболевания или диагнозы?",
+    hint: "Важно, чтобы мы не дали совет, который вам противопоказан",
     options: [
-      { value: "0-2", label: "0–2 раза за месяц" },
-      { value: "3-4", label: "3–4 раза за месяц" },
-      { value: "5-10", label: "5–10 раз за месяц" },
-      { value: "10+", label: "Более 10 раз за месяц" },
+      { value: "none", label: "Нет" },
+      { value: "hypertension", label: "Гипертония / сердечно-сосудистые заболевания" },
+      { value: "atherosclerosis", label: "Атеросклероз" },
+      { value: "diabetes2", label: "Диабет II типа" },
+      { value: "autoimmune", label: "Аутоиммунные заболевания" },
+      { value: "thyroid", label: "Заболевания щитовидной железы" },
+      { value: "kidney", label: "Почечная недостаточность" },
+      { value: "allergy", label: "Аллергия" },
+      { value: "cancer", label: "Онкологические заболевания" },
+      { value: "bpd", label: "Пограничные расстройства личности" },
+      { value: "other", label: "Другое" },
+      { value: "prefer_not_to_say", label: "Предпочитаю не указывать" },
     ],
   },
 
@@ -114,7 +124,11 @@ export const QUESTIONS: Question[] = [
       { value: "22-23", label: "22:00–23:00" },
       { value: "23-00", label: "23:00–00:00" },
       { value: "00-01", label: "00:00–01:00" },
-      { value: "after01", label: "После 01:00" },
+      { value: "01-02", label: "01:00–02:00" },
+      { value: "02-03", label: "02:00–03:00" },
+      { value: "03-04", label: "03:00–04:00" },
+      { value: "04-05", label: "04:00–05:00" },
+      { value: "after05", label: "После 05:00" },
     ],
   },
   {
@@ -127,7 +141,12 @@ export const QUESTIONS: Question[] = [
       { value: "6-7", label: "06:00–07:00" },
       { value: "7-8", label: "07:00–08:00" },
       { value: "8-9", label: "08:00–09:00" },
-      { value: "after9", label: "После 09:00" },
+      { value: "9-10", label: "09:00–10:00" },
+      { value: "10-11", label: "10:00–11:00" },
+      { value: "11-12", label: "11:00–12:00" },
+      { value: "12-13", label: "12:00–13:00" },
+      { value: "13-14", label: "13:00–14:00" },
+      { value: "after14", label: "После 14:00" },
     ],
   },
   {
@@ -162,7 +181,7 @@ export const QUESTIONS: Question[] = [
     id: "activeDays",
     type: "single",
     step: "movement",
-    title: "Сколько дней в неделю вы двигаетесь активно не менее 30 минут?",
+    title: "Сколько дней в неделю вы двигаетесь активно не менее 1 часа?",
     hint: "Зал, ходьба, йога, бег, плавание — всё считается",
     options: [
       { value: "0", label: "0 дней" },
@@ -184,6 +203,35 @@ export const QUESTIONS: Question[] = [
       { value: "8+", label: "Более 8 часов" },
     ],
   },
+  {
+    id: "functionalActivities",
+    type: "multi",
+    step: "movement",
+    title: "Какие активности вы можете выполнять без выраженного дискомфорта?",
+    hint: "Одышка, сильная усталость — признак дискомфорта. Отметьте все, что подходит",
+    options: [
+      { value: "short_walk", label: "Ходьба на короткие расстояния (10–15 минут)" },
+      { value: "stairs", label: "Подъём по лестнице или в гору" },
+      { value: "short_run", label: "Бег на короткую дистанцию" },
+      { value: "light_chores", label: "Лёгкая работа по дому" },
+      { value: "moderate_chores", label: "Умеренная работа по дому" },
+      { value: "heavy_chores", label: "Тяжёлая работа по дому" },
+      { value: "moderate_sport", label: "Умеренная физическая активность (танцы, гольф)" },
+      { value: "intense_sport", label: "Интенсивные виды спорта (плавание, футбол)" },
+    ],
+  },
+  {
+    id: "breathRecovery",
+    type: "single",
+    step: "movement",
+    title: "Как быстро вы восстанавливаете дыхание после подъёма по лестнице или быстрой ходьбы 10 минут?",
+    options: [
+      { value: "<1min", label: "Меньше минуты" },
+      { value: "1-2min", label: "1–2 минуты" },
+      { value: "3-5min", label: "3–5 минут" },
+      { value: "5min+_avoid", label: "Более 5 минут / стараюсь избегать такой нагрузки" },
+    ],
+  },
 
   // БЛОК 5. ПИТАНИЕ
   {
@@ -195,7 +243,8 @@ export const QUESTIONS: Question[] = [
     options: [
       { value: "almost_never", label: "Практически никогда" },
       { value: "1-4mo", label: "1–4 раза в месяц" },
-      { value: "3-6wk", label: "3–6 раз в неделю" },
+      { value: "2-3wk", label: "2–3 раза в неделю" },
+      { value: "4-6wk", label: "4–6 раз в неделю" },
       { value: "daily", label: "Ежедневно" },
     ],
   },
@@ -252,23 +301,36 @@ export const QUESTIONS: Question[] = [
       { value: "regular", label: "Да, регулярно (5+ раз в неделю)" },
     ],
   },
-
-  // БЛОК 7. СОЦИАЛЬНОЕ И ОПОРА
   {
-    id: "socialConnections",
+    id: "exerciseType",
     type: "single",
-    step: "social",
-    title: "Как часто вы общаетесь с людьми, которым доверяете?",
-    hint: "Социальные связи влияют на здоровье и устойчивость к стрессу сильнее, чем принято думать",
+    step: "habits",
+    title: "Какой тип нагрузки у вас преобладает?",
     options: [
-      { value: "almost_daily", label: "Почти каждый день" },
-      { value: "few_per_week", label: "Несколько раз в неделю" },
-      { value: "few_per_month", label: "Несколько раз в месяц" },
-      { value: "rarely", label: "Редко или почти никогда" },
+      { value: "strength", label: "Силовые тренировки (зал, TRX, кроссфит)" },
+      { value: "cardio", label: "Кардио (бег, велосипед, плавание)" },
+      { value: "yoga_flex", label: "Йога / растяжка / пилатес" },
+      { value: "mixed", label: "Смешанный тип" },
+      { value: "walking", label: "Ходьба / лёгкая активность" },
+      { value: "none", label: "Практически не занимаюсь" },
+    ],
+  },
+  {
+    id: "barrier",
+    type: "single",
+    step: "habits",
+    title: "Что сейчас мешает вам больше всего начать заботиться о себе регулярно?",
+    hint: "Longy подстроит план под ваш барьер",
+    options: [
+      { value: "time", label: "Не хватает времени" },
+      { value: "energy", label: "Не хватает энергии" },
+      { value: "conflicting_advice", label: "Слишком много противоречивых советов" },
+      { value: "motivation", label: "Быстро теряю мотивацию" },
+      { value: "dont_know_start", label: "Не понимаю, с чего начать" },
     ],
   },
 
-  // БЛОК 8. ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗАЦИИ
+  // БЛОК 7. ДАННЫЕ ДЛЯ ПЕРСОНАЛИЗАЦИИ
   {
     id: "gender",
     type: "single",
@@ -310,6 +372,18 @@ export const QUESTIONS: Question[] = [
     suffix: "кг",
   },
   {
+    id: "waistCm",
+    type: "number",
+    step: "personalization",
+    title: "Окружность талии",
+    hint: "На уровне пупка, на выдохе. Можно пропустить, если не знаете",
+    placeholder: "82",
+    min: 40,
+    max: 200,
+    suffix: "см",
+    optional: true,
+  },
+  {
     id: "trackers",
     type: "multi",
     step: "personalization",
@@ -327,7 +401,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
 
-  // БЛОК 9. КОНТАКТ
+  // БЛОК 8. КОНТАКТ
   {
     id: "name",
     type: "text",
@@ -341,7 +415,7 @@ export const QUESTIONS: Question[] = [
     type: "email",
     step: "contact",
     title: "Ваш email",
-    hint: "Пришлём PDF-отчёт и доступ к waitlist Longy",
+    hint: "Пришлём PDF-отчёт и доступ к приложению Longy",
     placeholder: "you@example.com",
   },
   {

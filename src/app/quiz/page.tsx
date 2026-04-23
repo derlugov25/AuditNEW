@@ -6,7 +6,7 @@ import Link from "next/link";
 import { QUESTIONS, Question } from "@/lib/quiz-questions";
 import { Answers, INITIAL_ANSWERS, STEPS } from "@/lib/types";
 
-const STORAGE_KEY = "longy_audit_answers_v1";
+const STORAGE_KEY = "longy_audit_answers_v2";
 
 export default function QuizPage() {
   const router = useRouter();
@@ -78,7 +78,7 @@ export default function QuizPage() {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-9 gap-1.5 max-w-3xl">
+        <div className="mt-8 grid grid-cols-8 gap-1.5 max-w-3xl">
           {STEPS.map((s, i) => (
             <div
               key={s.key}
@@ -161,7 +161,8 @@ export default function QuizPage() {
                   typeof answers[q.id] === "number" ? (answers[q.id] as number) : ""
                 }
                 onChange={(e) => {
-                  const v = e.target.value === "" ? "" : Number(e.target.value);
+                  const isOptional = "optional" in q && q.optional;
+                  const v = e.target.value === "" ? (isOptional ? null : "") : Number(e.target.value);
                   setField(v);
                 }}
                 placeholder={q.placeholder}
@@ -221,7 +222,10 @@ function isFilled(q: Question, a: Answers): boolean {
   const v = a[q.id];
   if (q.type === "single") return typeof v === "string" && v.length > 0;
   if (q.type === "multi") return Array.isArray(v) && v.length > 0;
-  if (q.type === "number") return typeof v === "number" && v >= q.min && v <= q.max;
+  if (q.type === "number") {
+    if ("optional" in q && q.optional) return true;
+    return typeof v === "number" && v >= q.min && v <= q.max;
+  }
   if (q.type === "text") return typeof v === "string" && v.trim().length >= 2;
   if (q.type === "email")
     return typeof v === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());

@@ -3,8 +3,19 @@ import { Answers, INITIAL_ANSWERS } from "@/lib/types";
 
 type OptionMap = Record<number, string>;
 
-// Нумерация соответствует внешнему опроснику Longy (Q1..Q23)
-const MAPS: Record<number, OptionMap | "age" | "height_weight" | "trackers" | "text"> = {
+type QMode =
+  | OptionMap
+  | "age"
+  | "height"
+  | "weight"
+  | "waist"
+  | "trackers"
+  | "conditions"
+  | "functional"
+  | "text";
+
+// Нумерация совпадает с порядком вопросов в src/lib/quiz-questions.ts (Q1..Q28).
+const MAPS: Record<number, QMode> = {
   // Q1. Главная цель
   1: {
     1: "weight_loss",
@@ -16,63 +27,105 @@ const MAPS: Record<number, OptionMap | "age" | "height_weight" | "trackers" | "t
     7: "biological_age",
   },
   // Q2. Уровень энергии
-  2: {
-    1: "stable_high",
-    2: "drop_after_lunch",
-    3: "unstable",
-    4: "mostly_low",
+  2: { 1: "stable_high", 2: "drop_after_lunch", 3: "unstable", 4: "mostly_low" },
+  // Q3. Часы тумана за неделю
+  3: {
+    1: "<1h",
+    2: "1-3h",
+    3: "3-7h",
+    4: "7-14h",
+    5: "14-20h",
+    6: "20-40h",
+    7: "40+h",
   },
-  // Q3. Дни тумана / сложной концентрации
-  3: { 1: "0", 2: "1-2", 3: "3-4", 4: "5-7" },
-  // Q4. Overwhelmed
-  4: { 1: "0-2", 2: "3-4", 3: "5-10", 4: "10+" },
-  // Q5. Во сколько ложитесь
-  5: { 1: "before22", 2: "22-23", 3: "23-00", 4: "00-01", 5: "after01" },
-  // Q6. Во сколько просыпаетесь
-  6: { 1: "before6", 2: "6-7", 3: "7-8", 4: "8-9", 5: "after9" },
+  // Q4. Хронические заболевания (multi)
+  4: "conditions",
+  // Q5. Время отбоя
+  5: {
+    1: "before22",
+    2: "22-23",
+    3: "23-00",
+    4: "00-01",
+    5: "01-02",
+    6: "02-03",
+    7: "03-04",
+    8: "04-05",
+    9: "after05",
+  },
+  // Q6. Время подъёма
+  6: {
+    1: "before6",
+    2: "6-7",
+    3: "7-8",
+    4: "8-9",
+    5: "9-10",
+    6: "10-11",
+    7: "11-12",
+    8: "12-13",
+    9: "13-14",
+    10: "after14",
+  },
   // Q7. Проблемы со сном
   7: { 1: "never", 2: "1-3", 3: "4-8", 4: "9+" },
   // Q8. Дневная сонливость
   8: { 1: "never", 2: "1-3", 3: "4-8", 4: "9+" },
-  // Q9. Дни активности
+  // Q9. Активные дни (1+ час)
   9: { 1: "0", 2: "1-2", 3: "3-4", 4: "5-7" },
   // Q10. Часы сидения
   10: { 1: "<4", 2: "4-6", 3: "6-8", 4: "8+" },
-  // Q11. Обработанные продукты
-  11: { 1: "almost_never", 2: "1-4mo", 3: "3-6wk", 4: "daily" },
-  // Q12. Овощи и фрукты
-  12: { 1: "3plus_daily", 2: "1-2_daily", 3: "3-6_week", 4: "<3_week" },
-  // Q13. Вода
-  13: { 1: "2plus_l", 2: "1.5-2l", 3: "1-1.5l", 4: "<1l" },
-  // Q14. Алкоголь
-  14: { 1: "never", 2: "rare", 3: "1-2wk", 4: "3-4wk", 5: "daily" },
-  // Q15. Никотин
-  15: {
+  // Q11. Функциональная активность (multi, DASI-style)
+  11: "functional",
+  // Q12. Восстановление дыхания
+  12: { 1: "<1min", 2: "1-2min", 3: "3-5min", 4: "5min+_avoid" },
+  // Q13. Обработанные продукты (5 градаций)
+  13: { 1: "almost_never", 2: "1-4mo", 3: "2-3wk", 4: "4-6wk", 5: "daily" },
+  // Q14. Овощи и фрукты
+  14: { 1: "3plus_daily", 2: "1-2_daily", 3: "3-6_week", 4: "<3_week" },
+  // Q15. Вода
+  15: { 1: "2plus_l", 2: "1.5-2l", 3: "1-1.5l", 4: "<1l" },
+  // Q16. Алкоголь
+  16: { 1: "never", 2: "rare", 3: "1-2wk", 4: "3-4wk", 5: "daily" },
+  // Q17. Никотин
+  17: {
     1: "never",
     2: "quit_1yr_plus",
     3: "quit_under_1yr",
     4: "sometimes",
     5: "regular",
   },
-  // Q16. Социальные связи
-  16: {
-    1: "almost_daily",
-    2: "few_per_week",
-    3: "few_per_month",
-    4: "rarely",
+  // Q18. Тип нагрузки
+  18: {
+    1: "strength",
+    2: "cardio",
+    3: "yoga_flex",
+    4: "mixed",
+    5: "walking",
+    6: "none",
   },
-  // Q17. Пол
-  17: { 1: "male", 2: "female" },
-  // Q18. Возраст (число)
-  18: "age",
-  // Q19. Рост / вес
-  19: "height_weight",
-  // Q20. Трекеры (multi)
-  20: "trackers",
-  // Q21-23. Текстовые поля: имя, email, telegram
-  21: "text",
-  22: "text",
-  23: "text",
+  // Q19. Барьер
+  19: {
+    1: "time",
+    2: "energy",
+    3: "conflicting_advice",
+    4: "motivation",
+    5: "dont_know_start",
+  },
+  // Q20. Пол
+  20: { 1: "male", 2: "female" },
+  // Q21. Возраст
+  21: "age",
+  // Q22. Рост
+  22: "height",
+  // Q23. Вес
+  23: "weight",
+  // Q24. Окружность талии (опционально, "skip"/"-" допустимо)
+  24: "waist",
+  // Q25. Трекеры (multi)
+  25: "trackers",
+  // Q26-28. Контакт
+  26: "text",
+  27: "text",
+  28: "text",
 };
 
 const TRACKERS: Record<number, string> = {
@@ -86,36 +139,66 @@ const TRACKERS: Record<number, string> = {
   8: "none",
 };
 
+const CONDITIONS: Record<number, string> = {
+  1: "none",
+  2: "hypertension",
+  3: "atherosclerosis",
+  4: "diabetes2",
+  5: "autoimmune",
+  6: "thyroid",
+  7: "kidney",
+  8: "allergy",
+  9: "cancer",
+  10: "bpd",
+  11: "other",
+  12: "prefer_not_to_say",
+};
+
+const FUNCTIONAL: Record<number, string> = {
+  1: "short_walk",
+  2: "stairs",
+  3: "short_run",
+  4: "light_chores",
+  5: "moderate_chores",
+  6: "heavy_chores",
+  7: "moderate_sport",
+  8: "intense_sport",
+};
+
 const KEY_FOR_Q: Record<number, keyof Answers | null> = {
   1: "goal",
   2: "energyPattern",
-  3: "foggyDays",
-  4: "overwhelmed",
+  3: "foggyHours",
+  4: "conditions",
   5: "bedtime",
   6: "wakeTime",
   7: "sleepProblems",
   8: "daytimeSleepiness",
   9: "activeDays",
   10: "sittingHours",
-  11: "processedFood",
-  12: "veggiesFruits",
-  13: "water",
-  14: "alcohol",
-  15: "nicotine",
-  16: "socialConnections",
-  17: "gender",
-  18: "age",
-  19: null, // height_weight → heightCm + weightKg
-  20: "trackers",
-  21: "name",
-  22: "email",
-  23: "telegram",
+  11: "functionalActivities",
+  12: "breathRecovery",
+  13: "processedFood",
+  14: "veggiesFruits",
+  15: "water",
+  16: "alcohol",
+  17: "nicotine",
+  18: "exerciseType",
+  19: "barrier",
+  20: "gender",
+  21: "age",
+  22: "heightCm",
+  23: "weightKg",
+  24: "waistCm",
+  25: "trackers",
+  26: "name",
+  27: "email",
+  28: "telegram",
 };
 
-// Минимальный обязательный набор вопросов для валидного аудита.
-// Q21 (имя) и Q23 (telegram) — не обязательные: их можно не заполнять.
+// Минимальный обязательный набор. Q24 (талия), Q26 (имя), Q28 (telegram) — необязательные.
 const REQUIRED_QUESTIONS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 25,
 ];
 
 export interface ParseError {
@@ -130,6 +213,16 @@ export interface ParseResult {
   warnings: string[];
 }
 
+const SKIP_RE = /^(skip|пропуск|—|-|нет|0|none)$/i;
+
+const parseMultiNums = (rest: string): number[] =>
+  rest
+    .split(/[\s,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => Number(s))
+    .filter((n) => Number.isFinite(n));
+
 export function parseInput(raw: string): ParseResult {
   const answers: Answers = { ...INITIAL_ANSWERS };
   const errors: ParseError[] = [];
@@ -143,7 +236,6 @@ export function parseInput(raw: string): ParseResult {
     if (!line) continue;
     if (line.startsWith("#")) continue;
 
-    // Поддерживаем также префиксы Name:/Email:/Telegram: для контактов
     const metaMatch = line.match(/^(name|email|telegram)\s*:\s*(.+)$/i);
     if (metaMatch) {
       const key = metaMatch[1].toLowerCase();
@@ -171,9 +263,9 @@ export function parseInput(raw: string): ParseResult {
     }
     seen.add(qNum);
 
-    const mapOrMode = MAPS[qNum];
+    const mode = MAPS[qNum];
 
-    if (mapOrMode === "age") {
+    if (mode === "age") {
       const ageNum = Number(rest.replace(/[^\d.]/g, ""));
       if (!Number.isFinite(ageNum) || ageNum < 14 || ageNum > 100) {
         errors.push({
@@ -187,32 +279,58 @@ export function parseInput(raw: string): ParseResult {
       continue;
     }
 
-    if (mapOrMode === "height_weight") {
-      const m = rest.match(/(\d{2,3})\s*[/,xх]\s*(\d{2,3})/);
-      if (!m) {
+    if (mode === "height") {
+      const n = Number(rest.replace(/[^\d.]/g, ""));
+      if (!Number.isFinite(n) || n < 120 || n > 230) {
         errors.push({
           line: i + 1,
           question: qNum,
-          message: `Q${qNum} ожидает "рост / вес" — например: 180 / 85. Получено: "${rest}"`,
+          message: `Q${qNum} ожидает рост в см (120–230). Получено: "${rest}"`,
         });
         continue;
       }
-      answers.heightCm = Number(m[1]);
-      answers.weightKg = Number(m[2]);
+      answers.heightCm = Math.round(n);
       continue;
     }
 
-    if (mapOrMode === "trackers") {
-      if (/^(нет|none|0|—)$/i.test(rest)) {
+    if (mode === "weight") {
+      const n = Number(rest.replace(/[^\d.]/g, ""));
+      if (!Number.isFinite(n) || n < 30 || n > 250) {
+        errors.push({
+          line: i + 1,
+          question: qNum,
+          message: `Q${qNum} ожидает вес в кг (30–250). Получено: "${rest}"`,
+        });
+        continue;
+      }
+      answers.weightKg = Math.round(n);
+      continue;
+    }
+
+    if (mode === "waist") {
+      if (SKIP_RE.test(rest)) {
+        answers.waistCm = null;
+        continue;
+      }
+      const n = Number(rest.replace(/[^\d.]/g, ""));
+      if (!Number.isFinite(n) || n < 40 || n > 200) {
+        errors.push({
+          line: i + 1,
+          question: qNum,
+          message: `Q${qNum} ожидает окружность талии в см (40–200) или "skip". Получено: "${rest}"`,
+        });
+        continue;
+      }
+      answers.waistCm = Math.round(n);
+      continue;
+    }
+
+    if (mode === "trackers") {
+      if (SKIP_RE.test(rest)) {
         answers.trackers = ["none"];
         continue;
       }
-      const nums = rest
-        .split(/[\s,;]+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((s) => Number(s))
-        .filter((n) => Number.isFinite(n));
+      const nums = parseMultiNums(rest);
       const invalid = nums.filter((n) => !(n in TRACKERS));
       if (invalid.length) {
         errors.push({
@@ -226,14 +344,54 @@ export function parseInput(raw: string): ParseResult {
       continue;
     }
 
-    if (mapOrMode === "text") {
+    if (mode === "conditions") {
+      if (SKIP_RE.test(rest)) {
+        answers.conditions = ["none"];
+        continue;
+      }
+      const nums = parseMultiNums(rest);
+      const invalid = nums.filter((n) => !(n in CONDITIONS));
+      if (invalid.length) {
+        errors.push({
+          line: i + 1,
+          question: qNum,
+          message: `Q${qNum} содержит неизвестные варианты: ${invalid.join(", ")}. Допустимо 1–12.`,
+        });
+        continue;
+      }
+      answers.conditions = nums.map((n) => CONDITIONS[n]) as Answers["conditions"];
+      continue;
+    }
+
+    if (mode === "functional") {
+      if (SKIP_RE.test(rest)) {
+        answers.functionalActivities = [];
+        continue;
+      }
+      const nums = parseMultiNums(rest);
+      const invalid = nums.filter((n) => !(n in FUNCTIONAL));
+      if (invalid.length) {
+        errors.push({
+          line: i + 1,
+          question: qNum,
+          message: `Q${qNum} содержит неизвестные варианты: ${invalid.join(", ")}. Допустимо 1–8.`,
+        });
+        continue;
+      }
+      answers.functionalActivities = nums.map(
+        (n) => FUNCTIONAL[n],
+      ) as Answers["functionalActivities"];
+      continue;
+    }
+
+    if (mode === "text") {
       const key = KEY_FOR_Q[qNum];
       if (!key) continue;
       (answers as unknown as Record<string, unknown>)[key] = rest;
       continue;
     }
 
-    const optionMap = mapOrMode as OptionMap;
+    const optionMap = mode as OptionMap;
     const asNum = Number(rest);
     if (!Number.isFinite(asNum) || !(asNum in optionMap)) {
       errors.push({
@@ -254,10 +412,8 @@ export function parseInput(raw: string): ParseResult {
     }
   }
 
-  // Email можно указать как через строку "Email:", так и через "22. ...".
-  // Требуем, чтобы он был заполнен хоть как-то.
   if (!answers.email) {
-    errors.push({ line: 0, message: `Не указан email (Q22 или строка "Email: ...")` });
+    errors.push({ line: 0, message: `Не указан email (Q27 или строка "Email: ...")` });
   }
 
   return { answers, errors, warnings };
