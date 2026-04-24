@@ -17,6 +17,68 @@ export interface ProtectorInsight {
 }
 
 // ──────────────────────────────────────────────────────────────
+// REPORT TONE — central narrative switcher
+// ──────────────────────────────────────────────────────────────
+
+export type ReportTone = "optimize" | "fix" | "recover";
+
+/**
+ * Derive one narrative tone from score. Used once per render to pick
+ * headlines, CTAs, card titles, chart modes.
+ *   optimize — сильная база, задача удержать + точечно дожать (excellent/good с малыми потерями)
+ *   fix      — есть ощутимые рычаги, но без катастрофы (attention, или good/excellent с потерями)
+ *   recover  — образ жизни заметно ускоряет старение (risk/critical)
+ */
+export function reportTone(score: ScoreResult): ReportTone {
+  const { longyScoreBand, yearsLifeLostTotal } = score;
+  if (longyScoreBand === "risk" || longyScoreBand === "critical") return "recover";
+  if (
+    (longyScoreBand === "excellent" || longyScoreBand === "good") &&
+    yearsLifeLostTotal < 1
+  )
+    return "optimize";
+  return "fix";
+}
+
+/**
+ * Нормативная оценка перцентили по Longy Score. Построена на грубом
+ * предположении о распределении score в популяции (μ=60, σ=15, clamped).
+ * Возвращает 1..99 — «вы в топ-N%». Достаточно для качественной фразы
+ * «в верхней X%»; не претендует на точный эпидемиологический расчёт.
+ */
+export function longyScorePercentileTop(score: number): number {
+  const mu = 60;
+  const sigma = 15;
+  const z = (score - mu) / sigma;
+  // Abramowitz-Stegun CDF approximation.
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989422804 * Math.exp((-z * z) / 2);
+  const cdf =
+    z >= 0
+      ? 1 -
+        d *
+          (0.319381530 * t -
+            0.356563782 * t * t +
+            1.781477937 * t * t * t -
+            1.821255978 * Math.pow(t, 4) +
+            1.330274429 * Math.pow(t, 5))
+      : d *
+        (0.319381530 * t -
+          0.356563782 * t * t +
+          1.781477937 * t * t * t -
+          1.821255978 * Math.pow(t, 4) +
+          1.330274429 * Math.pow(t, 5));
+  const topPct = Math.round((1 - cdf) * 100);
+  return Math.max(1, Math.min(99, topPct));
+}
+
+export function strongestDomain(score: ScoreResult): DomainScore {
+  return Object.values(score.domains).reduce((best, d) =>
+    d.score0to100 > best.score0to100 ? d : best,
+  );
+}
+
+// ──────────────────────────────────────────────────────────────
 // УСЛОВИЯ И GUARDRAILS
 // ──────────────────────────────────────────────────────────────
 
@@ -531,6 +593,57 @@ const SNIPPETS_BY_DOMAIN: Record<DomainKey, Snippet[]> = {
   habits: HABITS_SNIPPETS,
 };
 
+// Advanced «next-level» tips for users with strong domains (score ≥ 80).
+// Не привязаны к конкретным ответам — это general optimization layer.
+const OPTIMIZATION_BY_DOMAIN: Record<
+  DomainKey,
+  { headline: string; detail: string; action: string }
+> = {
+  sleep: {
+    headline: "Перейти от «высыпаюсь» к управляемому восстановлению",
+    detail:
+      "На вашем уровне субъективные ощущения уже не информативны — нужна объективная динамика. HRV, latency, cycle composition показывают дрейф раньше, чем его чувствуешь.",
+    action:
+      "2 недели с Oura/Whoop + ежедневный HRV-трекинг. Добавьте один «CGM week» чтобы увидеть, как ночная глюкоза влияет на глубокий сон.",
+  },
+  stress: {
+    headline: "От управления нагрузкой к мониторингу resilience",
+    detail:
+      "Сильная база — не гарантия от хронического стресса при росте ответственности. Нужен индикатор «запаса» до того, как он сломается.",
+    action:
+      "Квартальный тест cortisol awakening response + HRV baseline каждые 2 недели. Ранний сигнал — падение morning HRV ≥15% от baseline 3 дня подряд.",
+  },
+  movement: {
+    headline: "Перейти от общей активности к целевому VO₂max",
+    detail:
+      "Общие 150 мин/нед уже есть. Следующая цель — попасть в top quartile по VO₂max для возраста: это сильнейший одиночный предиктор смертности (Mandsager 2018).",
+    action:
+      "Замер VO₂max раз в 3 месяца (лаб. или Garmin/Apple Watch). Добавьте 2 × 4×4 zone-5 интервала в неделю — доказанный протокол прироста VO₂max на 10–15% за 10 недель.",
+  },
+  nutrition: {
+    headline: "От «правильно питаюсь» к персональной метаболической карте",
+    detail:
+      "На общих принципах потолок быстро достигается. Индивидуальная реакция на еду отличается в 3–4 раза между людьми — обобщённые рекомендации оставляют треть потенциала на столе.",
+    action:
+      "CGM-мониторинг 14 дней → персональный список продуктов с низким гликемическим откликом. Панель биомаркеров раз в 6 мес: hs-CRP, ApoB, HbA1c, ALT, омега-3 индекс.",
+  },
+  habits: {
+    headline: "Зафиксировать защищённый статус",
+    detail:
+      "Алкоголь и никотин под контролем — самый недооценённый компаундный выигрыш на долгой дистанции. Задача — не дать режиму соскользнуть в стрессовых фазах.",
+    action:
+      "Ежеквартальный self-audit: алкоголь за 30 дней, никотин (включая случайный), каннабис, снотворные. Любой дрейф >2× от baseline — сигнал к обсуждению с коучем.",
+  },
+};
+
+const OPTIMIZATION_EVIDENCE: Record<DomainKey, string> = {
+  sleep: "Walker, Why We Sleep (2017) + Sleep Foundation 2023 meta-analysis: субъективная оценка сна коррелирует с объективной всего на r=0.3.",
+  stress: "Task-Force HRV Standard 1996; Thayer & Lane 2009: HRV baseline — наиболее чувствительный non-invasive маркер autonomic balance.",
+  movement: "Mandsager et al., JAMA Netw Open 2018 (n=122 000): VO₂max — сильнейший одиночный предиктор all-cause mortality, сильнее курения и диабета.",
+  nutrition: "Zeevi et al., Cell 2015; PREDICT study 2020 (n=1100): индивидуальный гликемический отклик на один и тот же продукт варьируется в ≥3× между людьми.",
+  habits: "Sinha et al., Biological Psychiatry 2011: стресс-индуцированный возврат к алкоголю фиксируется задолго до осознанного желания — нужны внешние sensors.",
+};
+
 const EVIDENCE_BY_DOMAIN: Record<DomainKey, string> = {
   sleep: "Cappuccio et al., Sleep 2010 (метаанализ 16 когорт, 1.4 млн человек): 7–9 ч — зона минимального риска смерти от всех причин; отклонение в любую сторону повышает риск на 12–35%.",
   stress: "Epel et al., PNAS 2004 (совместно с лаб. Elizabeth Blackburn, Нобелевская премия 2009): у людей с высоким хроническим стрессом теломеры соответствовали +9–17 годам дополнительного биологического старения.",
@@ -603,6 +716,26 @@ export function yearsLostLineFromDomain(d: DomainScore): string {
 // ──────────────────────────────────────────────────────────────
 
 export function buildAccelerators(answers: Answers, score: ScoreResult): AcceleratorInsight[] {
+  const tone = reportTone(score);
+
+  if (tone === "optimize") {
+    // Top-3 strongest domains get optimization-tier content (next-level biomarkers / training).
+    const top = [...Object.values(score.domains)]
+      .sort((a, b) => b.score0to100 - a.score0to100)
+      .slice(0, 3);
+    return top.map((d) => {
+      const opt = OPTIMIZATION_BY_DOMAIN[d.key];
+      return {
+        key: d.key,
+        headline: opt.headline,
+        detail: opt.detail,
+        yearsLostEstimate: `${d.score0to100}/100 — выйти на следующий уровень`,
+        action: opt.action,
+        evidence: OPTIMIZATION_EVIDENCE[d.key],
+      };
+    });
+  }
+
   return score.topThree.map((d) => {
     const snippets = SNIPPETS_BY_DOMAIN[d.key];
     const raw = snippets.find((s) => s.match(answers)) ?? snippets[snippets.length - 1];

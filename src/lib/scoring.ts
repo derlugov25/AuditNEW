@@ -494,7 +494,12 @@ export function calculateScore(a: Answers): ScoreResult {
   });
   const protectors = allDomains.filter((d) => d.score0to100 >= 75);
   const nonStrongAccelerators = rankedAccelerators.filter((d) => d.verdict !== "strong");
-  const topThree = (nonStrongAccelerators.length > 0 ? nonStrongAccelerators : rankedAccelerators).slice(0, 3);
+  // Всегда возвращаем 3 карточки: сначала non-strong (там, где реальные рычаги),
+  // потом добираем самыми слабыми из strong, чтобы верстка страницы не плавала.
+  const topThree = [
+    ...nonStrongAccelerators,
+    ...rankedAccelerators.filter((d) => !nonStrongAccelerators.includes(d)),
+  ].slice(0, 3);
 
   const longyScore = Math.max(1, Math.min(100, Math.round(100 - agingVelocityPct * 2)));
 

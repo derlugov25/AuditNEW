@@ -3,6 +3,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   Svg,
   Path,
@@ -34,10 +35,33 @@ import {
   longyForGoalBlock,
   EIGHT_WEEK_PROMISE,
   formatBioAgeDelta,
+  reportTone,
+  longyScorePercentileTop,
+  strongestDomain,
+  ReportTone,
 } from "@/lib/insights";
 import { Answers } from "@/lib/types";
+import { T, formatReportDate, formatAge } from "@/lib/i18n";
+
+const ReportDateContext = React.createContext<string>("");
 
 const fontPath = (rel: string) => path.join(process.cwd(), "src/assets/fonts", rel);
+const imagePath = (rel: string) => path.join(process.cwd(), "src/assets/images", rel);
+
+const GOAL_IMAGE: Record<string, string> = {
+  weight_loss: "goals/weight_loss_ru.jpg",
+  muscle_gain: "goals/nabor_ru.jpg",
+  energy: "goals/energy_ru.jpg",
+  nutrition: "goals/nutrition_ru.jpg",
+  endurance: "goals/bio_age_ru.jpg",
+  sleep: "goals/sleep_ru.jpg",
+  biological_age: "goals/bio_age_ru.jpg",
+};
+
+const goalImagePath = (goal: string): string | null => {
+  const file = GOAL_IMAGE[goal];
+  return file ? imagePath(file) : null;
+};
 
 Font.register({
   family: "Geist",
@@ -52,16 +76,31 @@ Font.register({
 const PALETTE = {
   bg: "#FFFFFF",
   bgSoft: "#F7F7F7",
-  border: "#E8E8E8",
+  border: "#E0E0E0",
   text: "#000000",
-  textMuted: "#4A4A4A",
-  textFaint: "#B2B2B2",
+  textMuted: "#5A5A5A",
+  textFaint: "#9E9E9E",
   accent: "#EA4E1C",
-  warm: "#D94010",
-  danger: "#c0392b",
+  warm: "#D9481C",
+  danger: "#C03A2B",
   calm: "#00B158",
   amber: "#F5A623",
 };
+
+// Type scale — 8 tiers, modular ratio ~1.2–1.33.
+// Usage: caption (meta/legends) · body (paragraphs) · label (card titles / bold body)
+// · subhead (section sub-titles) · headline (page titles) · display (big numbers)
+// · displayLg (cover scores) · hero (hero-cover only).
+const FS = {
+  caption: 9,
+  body: 11,
+  label: 13,
+  subhead: 18,
+  headline: 24,
+  display: 32,
+  displayLg: 44,
+  hero: 48,
+} as const;
 
 const colorFor = (v: number): string => {
   if (v >= 10) return PALETTE.danger;
@@ -79,7 +118,7 @@ const styles = StyleSheet.create({
     paddingRight: 40,
     paddingBottom: 70,
     fontFamily: "Geist",
-    fontSize: 11,
+    fontSize: FS.body,
     lineHeight: 1.55,
   },
   brand: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -91,14 +130,14 @@ const styles = StyleSheet.create({
   },
   brandName: {
     fontFamily: "Geist",
-    fontSize: 14,
+    fontSize: FS.label,
     fontWeight: 600,
     color: PALETTE.text,
     letterSpacing: -0.3,
   },
   mono: {
     fontFamily: "Geist",
-    fontSize: 9,
+    fontSize: FS.caption,
     letterSpacing: 1,
     color: PALETTE.textFaint,
     textTransform: "uppercase",
@@ -112,7 +151,7 @@ const styles = StyleSheet.create({
   verdictTitle: {
     fontFamily: "Geist",
     fontWeight: 700,
-    fontSize: 28,
+    fontSize: FS.display,
     lineHeight: 1.25,
     letterSpacing: -0.6,
     color: PALETTE.text,
@@ -120,7 +159,7 @@ const styles = StyleSheet.create({
   verdictTitleFigures: {
     fontFamily: "Geist",
     fontWeight: 700,
-    fontSize: 30,
+    fontSize: FS.display,
     lineHeight: 1.2,
     letterSpacing: -0.8,
     color: PALETTE.text,
@@ -140,14 +179,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PALETTE.border,
     color: PALETTE.textMuted,
-    fontSize: 9,
+    fontSize: FS.caption,
     letterSpacing: 0.5,
   },
   card: {
     borderWidth: 1,
     borderColor: PALETTE.border,
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 16,
+    padding: 16,
     backgroundColor: PALETTE.bgSoft,
   },
   pageHeader: {
@@ -168,7 +207,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     color: PALETTE.textFaint,
-    fontSize: 8,
+    fontSize: FS.caption,
   },
 });
 
@@ -185,192 +224,450 @@ export const Report: React.FC<ReportProps> = ({
   accelerators,
   protectors,
 }) => {
-  const date = new Date().toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
   const name = (answers.name ?? "").trim();
+  const date = formatReportDate();
+  const tone = reportTone(score);
 
   return (
-    <Document title={`Longy audit · ${name || "report"}`}>
-      <TitlePage name={name} date={date} />
-      <CoverPage score={score} answers={answers} />
-      <VerdictPage score={score} answers={answers} />
-      <AcceleratorsPage accelerators={accelerators} score={score} />
-      <ProjectionPage score={score} />
-      <RadarPage score={score} protectors={protectors} />
-      <LongyPage answers={answers} />
-      <FinalPage name={name} score={score} answers={answers} />
-    </Document>
+    <ReportDateContext.Provider value={date}>
+      <Document title={`Longy audit · ${name || "report"}`}>
+        <HeroCoverPage name={name} date={date} age={typeof answers.age === "number" ? answers.age : Number(answers.age) || null} />
+        <CoverPage score={score} answers={answers} />
+        <VerdictPage score={score} answers={answers} />
+        <AcceleratorsPage accelerators={accelerators} score={score} />
+        {tone !== "optimize" && <ProjectionPage score={score} />}
+        <RadarPage score={score} protectors={protectors} />
+        <LongyPage answers={answers} />
+        <FinalPage name={name} score={score} answers={answers} />
+        <MethodologyPage />
+      </Document>
+    </ReportDateContext.Provider>
   );
 };
 
-const TitlePage: React.FC<{ name: string; date: string }> = ({ name, date }) => {
-  const displayName = name || "—";
-  return (
-    <Page size="A4" style={styles.page}>
-      <View style={styles.brand}>
-        <View style={styles.brandDot} />
-        <Text style={styles.brandName}>Longy</Text>
-      </View>
 
+const Header = (props?: { ordinal?: string; label?: string; onDark?: boolean }) => {
+  const date = React.useContext(ReportDateContext);
+  const onDark = props?.onDark ?? false;
+  const titleColor = onDark ? "#FFFFFF" : PALETTE.textFaint;
+  const dateColor = onDark ? "#FFFFFF" : PALETTE.accent;
+  const dividerColor = onDark ? "#FFFFFF" : PALETTE.textFaint;
+  return (
+    <View style={{ marginBottom: 20 }} fixed>
       <View
         style={{
-          flex: 1,
-          justifyContent: "center",
-          gap: 32,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <View style={{ gap: 14 }}>
+        <Image
+          src={imagePath(onDark ? "logo-white.png" : "logo.png")}
+          style={{ width: 80, objectFit: "contain" }}
+        />
+        <View style={{ alignItems: "flex-end" }}>
           <Text
             style={{
-              color: PALETTE.textFaint,
-              fontSize: 10,
-              letterSpacing: 3,
-              textTransform: "uppercase",
+              fontFamily: "Geist",
+              fontWeight: 500,
+              fontSize: FS.label,
+              color: titleColor,
             }}
           >
-            Персональный отчёт
+            {T.header.title}
           </Text>
           <Text
-            style={[
-              styles.display,
-              {
-                fontSize: 64,
-                lineHeight: 1.02,
-                maxWidth: 480,
-              },
-            ]}
+            style={{
+              fontFamily: "Geist",
+              fontWeight: 500,
+              fontSize: FS.label,
+              color: dateColor,
+              marginTop: 4,
+            }}
           >
-            {displayName}
+            {date}
           </Text>
         </View>
+      </View>
+      <View
+        style={{
+          height: 1,
+          backgroundColor: dividerColor,
+          marginTop: 10,
+        }}
+      />
+    </View>
+  );
+};
 
-        <View
+const Footer = ({ onDark = false }: { onDark?: boolean } = {}) => {
+  const primary = onDark ? "#FFFFFF" : PALETTE.textMuted;
+  const secondary = onDark ? "#FFFFFF" : PALETTE.textFaint;
+  const borderColor = onDark ? "#FFFFFF" : PALETTE.border;
+  return (
+    <View style={[styles.pageFooter, { borderTopColor: borderColor }]} fixed>
+      <View style={{ gap: 2 }}>
+        <Text style={{ color: primary, fontSize: FS.caption }}>{T.footer.site}</Text>
+        <Text style={{ color: secondary, fontSize: FS.caption }}>{T.footer.email}</Text>
+      </View>
+      <View style={{ gap: 2, alignItems: "flex-end" }}>
+        <Text style={{ color: primary, fontSize: FS.caption }}>{T.footer.notClinical}</Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Text style={{ color: secondary, fontSize: FS.caption }}>{T.footer.privacy}</Text>
+          <Text style={{ color: secondary, fontSize: FS.caption }}>{T.footer.terms}</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const HeroCoverPage: React.FC<{
+  name: string;
+  date: string;
+  age: number | null;
+}> = ({ name, date, age }) => {
+  const PAGE_W = 595;
+  const PAGE_H = 842;
+
+  const displayName = name || T.hero.emptyName;
+  const subtitleText =
+    age && age > 0 ? `${displayName}, ${formatAge(age)}` : displayName;
+  const subtitleFontSize =
+    subtitleText.length > 32 ? 22 : subtitleText.length > 24 ? 26 : 30;
+
+  return (
+    <Page
+      size="A4"
+      style={{
+        backgroundColor: PALETTE.accent,
+        color: "#FFFFFF",
+        fontFamily: "Geist",
+        padding: 0,
+        margin: 0,
+      }}
+    >
+      <View
+        wrap={false}
+        style={{
+          width: PAGE_W,
+          height: PAGE_H,
+          position: "relative",
+          backgroundColor: PALETTE.accent,
+        }}
+      >
+        {/* Background image */}
+        <Image
+          src={imagePath("velo.png")}
           style={{
-            height: 1,
-            backgroundColor: PALETTE.border,
-            maxWidth: 120,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: PAGE_W,
+            height: PAGE_H,
+            objectFit: "cover",
+            opacity: 0.35,
           }}
         />
 
-        <Text
+        {/* Gradient overlay: approximate linear-gradient top→bottom with two stacked semi-transparent layers */}
+        <View
           style={{
-            color: PALETTE.textMuted,
-            fontSize: 11,
-            letterSpacing: 1.5,
-            textTransform: "uppercase",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: PAGE_W,
+            height: PAGE_H / 2,
+            backgroundColor: PALETTE.accent,
+            opacity: 0.3,
+          }}
+        />
+        <View
+          style={{
+            position: "absolute",
+            top: PAGE_H / 2,
+            left: 0,
+            width: PAGE_W,
+            height: PAGE_H / 2,
+            backgroundColor: PALETTE.accent,
+            opacity: 0.7,
+          }}
+        />
+
+        {/* Logo */}
+        <Image
+          src={imagePath("logo-white.png")}
+          style={{
+            position: "absolute",
+            top: 32,
+            left: 32,
+            width: 101,
+            objectFit: "contain",
+          }}
+        />
+
+        {/* Main content block */}
+        <View
+          style={{
+            position: "absolute",
+            top: 318,
+            left: 32,
+            width: 530,
           }}
         >
-          {date}
-        </Text>
-      </View>
+          <Text
+            style={{
+              fontFamily: "Geist",
+              fontWeight: 500,
+              fontSize: FS.hero,
+              lineHeight: 1.15,
+              color: "#FFFFFF",
+              marginBottom: 6,
+            }}
+          >
+            {T.hero.reportTitle}
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Geist",
+              fontWeight: 400,
+              fontSize: subtitleFontSize,
+              lineHeight: 1.2,
+              color: "#FFFFFF",
+              opacity: 0.9,
+            }}
+          >
+            {subtitleText}
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Geist",
+              fontWeight: 600,
+              fontSize: FS.subhead,
+              color: "#FFFFFF",
+              marginTop: 36,
+            }}
+          >
+            {date}
+          </Text>
+        </View>
 
-      <Footer />
+        {/* Divider */}
+        <View
+          style={{
+            position: "absolute",
+            top: 776,
+            left: 25,
+            width: 545,
+            height: 1,
+            backgroundColor: "rgba(255,255,255,0.3)",
+          }}
+        />
+
+        {/* Footer */}
+        <Text
+          style={{
+            position: "absolute",
+            top: 784,
+            left: 32,
+            color: "rgba(255,255,255,0.7)",
+            fontSize: FS.body,
+          }}
+        >
+          {T.footer.site}
+        </Text>
+        <Text
+          style={{
+            position: "absolute",
+            top: 784,
+            right: 32,
+            color: "rgba(255,255,255,0.7)",
+            fontSize: FS.body,
+          }}
+        >
+          {T.hero.notClinical}
+        </Text>
+        <Text
+          style={{
+            position: "absolute",
+            top: 800,
+            left: 32,
+            color: "rgba(255,255,255,0.7)",
+            fontSize: FS.body,
+          }}
+        >
+          {T.footer.email}
+        </Text>
+        <View
+          style={{
+            position: "absolute",
+            top: 800,
+            right: 32,
+            flexDirection: "row",
+            gap: 8,
+          }}
+        >
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: FS.body }}>{T.hero.privacyPolicy}</Text>
+          <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: FS.body }}>{T.hero.termsOfService}</Text>
+        </View>
+      </View>
     </Page>
   );
 };
 
-const Header = ({ ordinal, label }: { ordinal: string; label: string }) => (
-  <View style={styles.pageHeader}>
-    <View style={styles.brand}>
-      <View style={styles.brandDot} />
-      <Text style={styles.brandName}>Longy</Text>
-    </View>
-    <Text style={styles.mono}>
-      {ordinal} · {label}
-    </Text>
-  </View>
-);
-
-const Footer = () => (
-  <View style={styles.pageFooter} fixed>
-    <View style={{ gap: 2 }}>
-      <Text style={{ color: PALETTE.textMuted, fontSize: 9 }}>longy.ai</Text>
-      <Text style={{ color: PALETTE.textFaint, fontSize: 9 }}>info@longy.ai</Text>
-    </View>
-    <View style={{ gap: 2, alignItems: "flex-end" }}>
-      <Text style={{ color: PALETTE.textMuted, fontSize: 9 }}>Not a clinical diagnosis</Text>
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <Text style={{ color: PALETTE.textFaint, fontSize: 9 }}>Конфиденциальность</Text>
-        <Text style={{ color: PALETTE.textFaint, fontSize: 9 }}>Условия</Text>
-      </View>
-    </View>
-  </View>
-);
-
 const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, answers }) => {
+  const tone = reportTone(score);
+  const isOptimize = tone === "optimize";
+  const topPct = longyScorePercentileTop(score.longyScore);
+
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="02" label="Обложка" />
+      <Header ordinal="02" label={T.cover.ordinal} />
       <View wrap={false} style={{ marginTop: 20, gap: 16 }}>
-        <Text style={styles.chip}>Потеря здоровых лет</Text>
-        <Text style={[styles.display, { fontSize: 40, lineHeight: 1.08, letterSpacing: 0 }]}>
-          Ваш организм{"\n"}
-          <Text style={{ color: PALETTE.accent }}>стареет</Text>{" "}
-          не так, как{"\n"}
-          календарь
+        <Text style={styles.chip}>
+          {isOptimize ? T.cover.chipOptimize : T.cover.chip}
         </Text>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 12, maxWidth: 440, lineHeight: 1.5 }}>
+        <Text style={[styles.display, { fontSize: FS.displayLg, lineHeight: 1.08, letterSpacing: 0 }]}>
+          {isOptimize ? (
+            <>
+              {T.cover.headlineOptimizeLine1}
+              {"\n"}
+              <Text style={{ color: PALETTE.accent }}>{T.cover.headlineOptimizeAccent}</Text>
+              {T.cover.headlineOptimizeLine2}
+            </>
+          ) : (
+            <>
+              {T.cover.headlineLine1}
+              {"\n"}
+              <Text style={{ color: PALETTE.accent }}>{T.cover.headlineAccent}</Text>
+              {T.cover.headlineLine2}
+              {"\n"}
+              {T.cover.headlineLine3}
+            </>
+          )}
+        </Text>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 440, lineHeight: 1.5 }}>
           {coverSubtitle(score)}
         </Text>
         <Text
           style={{
             color: PALETTE.textFaint,
-            fontSize: 9,
+            fontSize: FS.caption,
             letterSpacing: 0.4,
             marginTop: 2,
           }}
         >
-          Методология: Li et al., J Intern Med 2024 · 5 доменов · 21 параметр + хронические заболевания
+          {T.cover.methodology}
         </Text>
       </View>
 
-      <View wrap={false} style={{ marginTop: 44, flexDirection: "row", gap: 12 }}>
+      {/* Celebration percentile card — only for optimize tone */}
+      {isOptimize && (
+        <View
+          wrap={false}
+          style={{
+            marginTop: 20,
+            borderRadius: 16,
+            padding: 14,
+            backgroundColor: "#EBF8F1",
+            borderWidth: 1,
+            borderColor: PALETTE.calm,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+          }}
+        >
+          <Text
+            style={[
+              styles.numStat,
+              { fontSize: FS.display, color: PALETTE.calm, minWidth: 70 },
+            ]}
+          >
+            TOP {topPct}%
+          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.mono, { color: PALETTE.calm }]}>
+              {T.cover.percentileChip}
+            </Text>
+            <Text
+              style={{
+                color: PALETTE.text,
+                fontSize: FS.body,
+                marginTop: 4,
+                lineHeight: 1.4,
+              }}
+            >
+              {T.cover.topPercent(topPct)}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <View wrap={false} style={{ marginTop: isOptimize ? 16 : 44, flexDirection: "row", gap: 12 }}>
         <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>Longy Score *</Text>
+          <Text style={styles.mono}>{T.cover.longyScore}</Text>
           <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
             <Text
               style={[
                 styles.numStat,
-                { fontSize: 44, color: longyScoreTone(score.longyScoreBand) },
+                { fontSize: FS.displayLg, color: longyScoreTone(score.longyScoreBand) },
               ]}
             >
               {score.longyScore}
             </Text>
-            <Text style={{ color: PALETTE.textFaint, fontSize: 14 }}>/ 100</Text>
+            <Text style={{ color: PALETTE.textFaint, fontSize: FS.label }}>{T.cover.outOf100}</Text>
           </View>
-          <Text style={{ color: PALETTE.textMuted, marginTop: 10, fontSize: 10 }}>
+          <Text style={{ color: PALETTE.textMuted, marginTop: 10, fontSize: FS.body }}>
             {longyScoreLabel(score.longyScoreBand).label}
           </Text>
         </View>
 
-        {(() => {
-          const md = pickMainDriver(answers, score);
-          if (!md) {
-            return (
-              <View style={[styles.card, { flex: 1 }]}>
-                <Text style={styles.mono}>Главный драйвер</Text>
-                <Text style={[styles.display, { fontSize: 18, marginTop: 10, lineHeight: 1.15 }]}>—</Text>
-              </View>
-            );
-          }
-          return (
-            <View style={[styles.card, { flex: 1 }]}>
-              <Text style={styles.mono}>Главный драйвер</Text>
-              <Text style={[styles.display, { fontSize: 16, marginTop: 10, lineHeight: 1.2 }]}>
-                {md.headline}
-              </Text>
-              <Text style={{ color: PALETTE.textMuted, marginTop: 6, fontSize: 10, lineHeight: 1.4 }}>
-                {md.subtext}
-              </Text>
-              <Text style={{ color: PALETTE.warm, marginTop: 8, fontSize: 10 }}>
-                ≈{md.domain.yearsLifeLost.toFixed(1)} лет здоровой жизни
-              </Text>
-            </View>
-          );
-        })()}
+        {isOptimize
+          ? (() => {
+              const best = strongestDomain(score);
+              return (
+                <View style={[styles.card, { flex: 1 }]}>
+                  <Text style={[styles.mono, { color: PALETTE.calm }]}>
+                    {T.cover.strongestSupport}
+                  </Text>
+                  <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.2 }]}>
+                    {best.label}
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 6 }}>
+                    <Text style={[styles.numStat, { fontSize: FS.headline, color: PALETTE.calm }]}>
+                      {best.score0to100}
+                    </Text>
+                    <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>/ 100</Text>
+                  </View>
+                </View>
+              );
+            })()
+          : (() => {
+              const md = pickMainDriver(answers, score);
+              if (!md) {
+                return (
+                  <View style={[styles.card, { flex: 1 }]}>
+                    <Text style={styles.mono}>{T.cover.mainDriver}</Text>
+                    <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.15 }]}>
+                      {T.cover.mainDriverEmpty}
+                    </Text>
+                  </View>
+                );
+              }
+              return (
+                <View style={[styles.card, { flex: 1 }]}>
+                  <Text style={styles.mono}>{T.cover.mainDriver}</Text>
+                  <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.2 }]}>
+                    {md.headline}
+                  </Text>
+                  <Text style={{ color: PALETTE.textMuted, marginTop: 6, fontSize: FS.body, lineHeight: 1.4 }}>
+                    {md.subtext}
+                  </Text>
+                  <Text style={{ color: PALETTE.warm, marginTop: 8, fontSize: FS.body }}>
+                    {T.cover.yearsOfLife(md.domain.yearsLifeLost.toFixed(1))}
+                  </Text>
+                </View>
+              );
+            })()}
 
         {(() => {
           const m = pickRightCardMetric(score);
@@ -384,14 +681,14 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
             <View style={[styles.card, { flex: 1 }]}>
               <Text style={styles.mono}>{m.label}</Text>
               <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 10 }}>
-                <Text style={[styles.numStat, { fontSize: 40, color: valueColor }]}>
+                <Text style={[styles.numStat, { fontSize: FS.displayLg, color: valueColor }]}>
                   {m.value}
                 </Text>
                 {m.type === "domain" && (
-                  <Text style={{ color: PALETTE.textFaint, fontSize: 14 }}>/ 100</Text>
+                  <Text style={{ color: PALETTE.textFaint, fontSize: FS.label }}>{T.cover.outOf100}</Text>
                 )}
               </View>
-              <Text style={{ color: PALETTE.textMuted, marginTop: 10, fontSize: 10 }}>
+              <Text style={{ color: PALETTE.textMuted, marginTop: 10, fontSize: FS.body }}>
                 {m.sublabel}
               </Text>
             </View>
@@ -402,7 +699,7 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
       <Text
         style={{
           color: PALETTE.textFaint,
-          fontSize: 8,
+          fontSize: FS.caption,
           lineHeight: 1.4,
           marginTop: 10,
           maxWidth: 480,
@@ -448,7 +745,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
             </View>
           );
         })()}
-        <Text style={{ color: PALETTE.textMuted, fontSize: 12, maxWidth: 480, marginTop: 6 }}>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480, marginTop: 6 }}>
           {verdictText}
         </Text>
       </View>
@@ -457,53 +754,61 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
         <HealthspanStrip score={score} />
       </View>
 
-      <View wrap={false} style={{ marginTop: 18, alignItems: "center", gap: 6 }}>
-        <Text style={[styles.mono, { textAlign: "center" }]}>
-          Где вы сейчас находитесь по вашей скорости старения
-        </Text>
-        <SpeedometerSvg velocity={velocity} width={300} />
-        <Text
+      <View wrap={false} style={{ marginTop: 12 }}>
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <Text style={[styles.mono, { textAlign: "center" }]}>
+            Где вы сейчас находитесь по вашей скорости старения
+          </Text>
+          <SpeedometerSvg velocity={velocity} width={220} />
+          <Text
+            style={{
+              color: PALETTE.text,
+              fontSize: FS.body,
+              fontWeight: "bold",
+              textAlign: "center",
+              maxWidth: 440,
+              marginTop: 2,
+              lineHeight: 1.4,
+            }}
+          >
+            {velocityZoneDescription(velocity)}
+          </Text>
+        </View>
+
+        <View
           style={{
-            color: PALETTE.text,
-            fontSize: 11,
-            fontWeight: "bold",
-            textAlign: "center",
-            maxWidth: 440,
-            marginTop: 4,
-            lineHeight: 1.45,
+            marginTop: 8,
+            flexDirection: "row",
+            gap: 8,
+            flexWrap: "wrap",
+            justifyContent: "center",
           }}
         >
-          {velocityZoneDescription(velocity)}
-        </Text>
-      </View>
-
-      <View
-        wrap={false}
-        style={{
-          marginTop: 10,
-          flexDirection: "row",
-          gap: 8,
-          flexWrap: "wrap",
-          justifyContent: "center",
-        }}
-      >
-        <LegendPill color={PALETTE.calm} label="Ниже нормы" />
-        <LegendPill color={PALETTE.accent} label="Норма" />
-        <LegendPill color={PALETTE.amber} label="Внимание" />
-        <LegendPill color={PALETTE.warm} label="Риск" />
-        <LegendPill color={PALETTE.danger} label="Критично" />
+          {(() => {
+            const zone = velocityZoneKey(velocity);
+            return (
+              <>
+                <LegendPill color={PALETTE.calm} label="Ниже нормы" active={zone === "below"} />
+                <LegendPill color={PALETTE.accent} label="Норма" active={zone === "normal"} />
+                <LegendPill color={PALETTE.amber} label="Ускорение" active={zone === "acceleration"} />
+                <LegendPill color={PALETTE.warm} label="Риск" active={zone === "risk"} />
+                <LegendPill color={PALETTE.danger} label="Критично" active={zone === "critical"} />
+              </>
+            );
+          })()}
+        </View>
       </View>
 
       <View wrap={false} style={{ marginTop: 24, flexDirection: "row", gap: 10 }}>
         <View style={[styles.card, { flex: 1 }]}>
           <Text style={styles.mono}>Ваша цель</Text>
-          <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: 13 }}>
+          <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
             {goalLabel(answers.goal)}
           </Text>
         </View>
         <View style={[styles.card, { flex: 1 }]}>
           <Text style={styles.mono}>Трекеры</Text>
-          <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: 13 }}>
+          <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
             {answers.trackers && answers.trackers.length > 0
               ? answers.trackers.map(trackerLabel).join(", ")
               : "Пока не используете"}
@@ -540,17 +845,17 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
                 marginTop: 6,
               }}
             >
-              <Text style={[styles.display, { fontSize: 15, lineHeight: 1.2 }]}>
+              <Text style={[styles.display, { fontSize: FS.label, lineHeight: 1.2 }]}>
                 {score.goalDomainScore.label}
               </Text>
-              <Text style={{ color: tone, fontSize: 11 }}>
+              <Text style={{ color: tone, fontSize: FS.body }}>
                 {score.goalDomainScore.score0to100}/100
               </Text>
             </View>
             <Text
               style={{
                 color: PALETTE.textMuted,
-                fontSize: 10,
+                fontSize: FS.body,
                 marginTop: 6,
                 lineHeight: 1.5,
               }}
@@ -567,8 +872,8 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
                   </Text>
                   {lg.bullets.map((b, i) => (
                     <View key={i} style={{ flexDirection: "row", gap: 6 }}>
-                      <Text style={{ color: PALETTE.accent, fontSize: 10 }}>·</Text>
-                      <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.5, flex: 1 }}>
+                      <Text style={{ color: PALETTE.accent, fontSize: FS.body }}>·</Text>
+                      <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.5, flex: 1 }}>
                         {b}
                       </Text>
                     </View>
@@ -576,7 +881,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
                   <Text
                     style={{
                       color: PALETTE.accent,
-                      fontSize: 11,
+                      fontSize: FS.body,
                       fontWeight: "bold",
                       marginTop: 4,
                     }}
@@ -586,6 +891,26 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
                 </View>
               );
             })()}
+          </View>
+        );
+      })()}
+
+      {(() => {
+        const imgPath = goalImagePath(answers.goal);
+        if (!imgPath) return null;
+        return (
+          <View
+            wrap={false}
+            style={{
+              marginTop: 16,
+              borderRadius: 16,
+              overflow: "hidden",
+            }}
+          >
+            <Image
+              src={imgPath}
+              style={{ width: "100%", objectFit: "cover" }}
+            />
           </View>
         );
       })()}
@@ -634,20 +959,20 @@ const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
           <Text
             style={[
               styles.numStat,
-              { fontSize: 36, color: gapColor },
+              { fontSize: FS.display, color: gapColor },
             ]}
           >
             +{gap.toFixed(1)}
           </Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: 11 }}>лет возможно получить</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>лет возможно получить</Text>
         </View>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 9, marginTop: 4 }}>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, marginTop: 4 }}>
           сейчас у вас +{years.toFixed(1)} из максимальных +{max}
         </Text>
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 11, lineHeight: 1.5 }}>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
           {narrative}
         </Text>
         <View
@@ -695,12 +1020,12 @@ const AcceleratorsPage: React.FC<{
         <Text style={styles.chip}>
           {isOptimizing ? "Маржинальный потенциал" : "Ваши личные драйверы"}
         </Text>
-        <Text style={[styles.display, { fontSize: 26, lineHeight: 1.15 }]}>
+        <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
           {isOptimizing
             ? "Где есть потенциал для роста"
             : "Что именно «стоит» в годах здоровой жизни"}
         </Text>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 11 }}>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.body }}>
           {isOptimizing
             ? "У вас крепкая база. Ниже — три домена с наибольшим маржинальным потенциалом. Каждый шаг небольшой, но они усиливают друг друга."
             : "Отсортировано по влиянию на потерю здоровых лет. Работайте сверху вниз — первый даст самый быстрый эффект."}
@@ -745,11 +1070,11 @@ const AcceleratorsPage: React.FC<{
 
               <View style={{ flex: 1 }}>
                 <Text style={styles.mono}>{dom.label}</Text>
-                <Text style={[styles.display, { fontSize: 16, marginTop: 4 }]}>
+                <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 4 }]}>
                   {acc.headline}
                 </Text>
                 {!isOptimizing && (
-                  <Text style={{ color: dotColor, fontSize: 10, marginTop: 4 }}>
+                  <Text style={{ color: dotColor, fontSize: FS.body, marginTop: 4 }}>
                     {acc.yearsLostEstimate}
                   </Text>
                 )}
@@ -757,7 +1082,7 @@ const AcceleratorsPage: React.FC<{
                   style={{
                     color: PALETTE.textMuted,
                     marginTop: 8,
-                    fontSize: 11,
+                    fontSize: FS.body,
                     lineHeight: 1.5,
                   }}
                 >
@@ -776,7 +1101,7 @@ const AcceleratorsPage: React.FC<{
                 >
                   <Text style={[styles.mono, { color: actionBorderColor }]}>{actionLabel}</Text>
                   <Text
-                    style={{ color: PALETTE.text, fontSize: 11, marginTop: 4, lineHeight: 1.5 }}
+                    style={{ color: PALETTE.text, fontSize: FS.body, marginTop: 4, lineHeight: 1.5 }}
                   >
                     {acc.action}
                   </Text>
@@ -785,7 +1110,7 @@ const AcceleratorsPage: React.FC<{
                 <Text
                   style={{
                     color: PALETTE.textFaint,
-                    fontSize: 9,
+                    fontSize: FS.caption,
                     marginTop: 8,
                   }}
                 >
@@ -805,54 +1130,76 @@ const AcceleratorsPage: React.FC<{
 const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
   const proj = score.projection;
   const hasLeverage = proj.deltaScore > 0;
-  const isOptimizing =
-    score.longyScoreBand === "excellent" || score.longyScoreBand === "good";
-  const maintenanceTips = isOptimizing && !hasLeverage ? buildMaintenanceTips(score) : [];
+  const tone = reportTone(score);
+  const isOptimize = tone === "optimize";
+  const maintenanceTips = isOptimize && !hasLeverage ? buildMaintenanceTips(score) : [];
+  const chipLabel = isOptimize
+    ? "Реализованный потенциал"
+    : "Из чего складывается потеря лет";
+  const headline = isOptimize
+    ? "Сколько здоровых лет вы уже набираете"
+    : "Сколько здоровых лет «стоит» каждый домен — и что вернуть, если починить топ-3";
+  const subhead = isOptimize
+    ? `Healthspan-модель даёт до +${score.healthspanMax} лет за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)}.`
+    : null;
 
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="05" label={isOptimizing && !hasLeverage ? "Протокол поддержания" : "Цена и проекция"} />
-      <View wrap={false} style={{ gap: 12 }}>
-        <Text style={styles.chip}>
-          {isOptimizing && !hasLeverage ? "Стратегия удержания результата" : "Из чего складывается потеря лет"}
+      <Header ordinal="05" label={isOptimize ? "Реализованный потенциал" : "Цена и проекция"} />
+      <View wrap={false} style={{ gap: 8 }}>
+        <Text style={styles.chip}>{chipLabel}</Text>
+        <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.1 }]}>
+          {headline}
         </Text>
-        <Text style={[styles.display, { fontSize: 26, lineHeight: 1.15 }]}>
-          {isOptimizing && !hasLeverage
-            ? "Как закрепить то, что уже работает"
-            : "Сколько здоровых лет «стоит» каждый домен — и что вернуть, если починить топ-3"}
-        </Text>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 11, maxWidth: 480 }}>
-          {isOptimizing && !hasLeverage
-            ? "Ваши домены уже на сильном уровне. Главная задача теперь — системное поддержание. Ниже — конкретные правила по каждому домену."
-            : "Слева — разложение потери здоровых лет по доменам (модель отчёта). Справа — проекция Longy Score, если подтянуть три главных ускорителя до уровня 75/100."}
-        </Text>
+        {subhead && (
+          <Text
+            style={{
+              color: PALETTE.textMuted,
+              fontSize: FS.body,
+              maxWidth: 480,
+              lineHeight: 1.4,
+            }}
+          >
+            {subhead}
+          </Text>
+        )}
       </View>
 
-      {/* Waterfall: всегда показываем, даже для отличников — информативен */}
-      <View wrap={false} style={{ marginTop: 22 }}>
-        <Text style={styles.mono}>
-          Waterfall · ≈{score.yearsLifeLostTotal.toFixed(1)} лет здоровой жизни
-        </Text>
-        <View style={{ marginTop: 10 }}>
-          <WaterfallSvg
-            items={score.velocityWaterfall}
-            totalYears={score.yearsLifeLostTotal}
-            width={515}
-            height={200}
-          />
-        </View>
+      {/* Waterfall или fallback */}
+      <View wrap={false} style={{ marginTop: 14 }}>
+        {score.yearsLifeLostTotal < 1 ? (
+          <RealizedPotentialBlock score={score} />
+        ) : (
+          <>
+            <Text style={styles.mono}>
+              Waterfall · ≈{score.yearsLifeLostTotal.toFixed(1)} лет здоровой жизни
+            </Text>
+            <View style={{ marginTop: 6 }}>
+              <WaterfallSvg
+                items={score.velocityWaterfall}
+                totalYears={score.yearsLifeLostTotal}
+                width={515}
+                height={160}
+              />
+            </View>
+          </>
+        )}
       </View>
 
-      {/* Нижний блок: проекция роста ИЛИ протокол поддержания */}
-      {isOptimizing && !hasLeverage ? (
-        <MaintenanceGrid tips={maintenanceTips} />
+      {/* Нижний блок: поддержание (optimize без leverage), рост (fix/recover), или maintain-view */}
+      {isOptimize ? (
+        maintenanceTips.length > 0 ? (
+          <MaintenanceGrid tips={maintenanceTips} />
+        ) : (
+          <MaintainProjectionBlock score={score} />
+        )
       ) : (
         <View
           wrap={false}
           style={{
-            marginTop: 24,
-            borderRadius: 18,
-            padding: 18,
+            marginTop: 12,
+            borderRadius: 16,
+            padding: 14,
             backgroundColor: PALETTE.bgSoft,
             borderWidth: 1,
             borderColor: PALETTE.border,
@@ -860,18 +1207,18 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
         >
           <Text style={styles.mono}>Если закрыть топ-3 · 8 недель с Longy</Text>
 
-          <View style={{ marginTop: 12, flexDirection: "row", gap: 18, alignItems: "center" }}>
+          <View style={{ marginTop: 8, flexDirection: "row", gap: 14, alignItems: "center" }}>
             <ImpactPreviewSvg
               scoreNow={proj.longyScoreNow}
               scoreTarget={proj.longyScoreTarget}
-              width={230}
-              height={130}
+              width={180}
+              height={90}
             />
-            <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.display, { fontSize: 18, lineHeight: 1.25 }]}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={[styles.display, { fontSize: FS.subhead, lineHeight: 1.2 }]}>
                 {formatBioAgeDelta(proj.yearsLifeLostNow - proj.yearsLifeLostTarget)}
               </Text>
-              <Text style={{ color: PALETTE.textMuted, fontSize: 11, lineHeight: 1.55 }}>
+              <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, lineHeight: 1.45 }}>
                 Longy Score вырастет с{" "}
                 <Text style={{ color: PALETTE.textMuted }}>{proj.longyScoreNow}</Text>{" "}
                 до <Text style={{ color: PALETTE.accent }}>{proj.longyScoreTarget}</Text>.
@@ -880,24 +1227,31 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
             </View>
           </View>
 
-          <View style={{ marginTop: 14, gap: 10 }}>
+          <View style={{ marginTop: 10, gap: 6 }}>
             {proj.targets.map((d) => {
               const bullets = EIGHT_WEEK_PROMISE[d.key] ?? [];
               return (
-                <View key={d.key} style={{ gap: 4 }}>
+                <View key={d.key} style={{ gap: 2 }}>
                   <Text
                     style={{
                       color: PALETTE.accent,
-                      fontSize: 11,
+                      fontSize: FS.caption,
                       fontWeight: "bold",
                     }}
                   >
                     {d.label}
                   </Text>
                   {bullets.map((b, i) => (
-                    <View key={i} style={{ flexDirection: "row", gap: 6, marginLeft: 6 }}>
-                      <Text style={{ color: PALETTE.accent, fontSize: 10 }}>·</Text>
-                      <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.5, flex: 1 }}>
+                    <View key={i} style={{ flexDirection: "row", gap: 4, marginLeft: 4 }}>
+                      <Text style={{ color: PALETTE.accent, fontSize: FS.caption }}>·</Text>
+                      <Text
+                        style={{
+                          color: PALETTE.text,
+                          fontSize: FS.caption,
+                          lineHeight: 1.4,
+                          flex: 1,
+                        }}
+                      >
                         {b}
                       </Text>
                     </View>
@@ -913,6 +1267,157 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
     </Page>
   );
 };
+
+const RealizedPotentialBlock: React.FC<{ score: ScoreResult }> = ({ score }) => {
+  const years = score.healthspanYears;
+  const max = score.healthspanMax;
+  const gap = Math.max(0, Math.round((max - years) * 10) / 10);
+  const fillPct = Math.max(0, Math.min(1, years / max));
+  const domains = Object.values(score.domains);
+  const strongestDomains = [...domains]
+    .sort((a, b) => b.score0to100 - a.score0to100)
+    .slice(0, 3);
+
+  return (
+    <View>
+      <Text style={styles.mono}>
+        Потерь здоровых лет по модели почти не видно — +{years.toFixed(1)} из {max}
+      </Text>
+
+      <View
+        style={{
+          marginTop: 10,
+          height: 14,
+          borderRadius: 7,
+          backgroundColor: "#EBEBEB",
+          overflow: "hidden",
+          flexDirection: "row",
+        }}
+      >
+        <View
+          style={{
+            width: `${Math.round(fillPct * 100)}%`,
+            height: "100%",
+            backgroundColor: PALETTE.calm,
+          }}
+        />
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginTop: 6,
+        }}
+      >
+        <Text style={{ color: PALETTE.calm, fontSize: FS.caption, fontWeight: 600 }}>
+          +{years.toFixed(1)} реализовано
+        </Text>
+        <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>
+          +{gap.toFixed(1)} в запасе
+        </Text>
+      </View>
+
+      <View
+        style={{
+          marginTop: 16,
+          flexDirection: "row",
+          gap: 10,
+        }}
+      >
+        {strongestDomains.map((d) => (
+          <View
+            key={d.key}
+            style={{
+              flex: 1,
+              padding: 12,
+              borderRadius: 12,
+              backgroundColor: "#EBF8F1",
+              borderWidth: 1,
+              borderColor: PALETTE.calm,
+            }}
+          >
+            <Text style={[styles.mono, { color: PALETTE.calm }]}>{d.label}</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "baseline",
+                gap: 4,
+                marginTop: 6,
+              }}
+            >
+              <Text style={[styles.numStat, { fontSize: FS.headline, color: PALETTE.calm }]}>
+                {d.score0to100}
+              </Text>
+              <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>/ 100</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const MaintainProjectionBlock: React.FC<{ score: ScoreResult }> = ({ score }) => (
+  <View
+    wrap={false}
+    style={{
+      marginTop: 24,
+      borderRadius: 18,
+      padding: 18,
+      backgroundColor: "#EBF8F1",
+      borderWidth: 1,
+      borderColor: PALETTE.calm,
+    }}
+  >
+    <Text style={[styles.mono, { color: PALETTE.calm }]}>
+      Если сохраните режим — 12 месяцев вперёд
+    </Text>
+    <Text
+      style={[
+        styles.display,
+        { fontSize: FS.subhead, marginTop: 8, lineHeight: 1.25 },
+      ]}
+    >
+      Longy Score удержится около {score.longyScore} ± 3
+    </Text>
+    <Text
+      style={{
+        color: PALETTE.textMuted,
+        fontSize: FS.body,
+        marginTop: 8,
+        lineHeight: 1.55,
+      }}
+    >
+      На вашей базе основной риск — дрейф: стресс в проектах, смещение сна на
+      выходных, реже силовая тренировка в поездках. Longy ловит ранние сигналы
+      и возвращает к привычному режиму до того, как показатели упадут.
+    </Text>
+    <View style={{ marginTop: 12, gap: 6 }}>
+      <Text style={{ color: PALETTE.calm, fontSize: FS.body, fontWeight: 600 }}>
+        Что удерживает результат
+      </Text>
+      {[
+        "Еженедельный чек-ин по HRV и качеству сна",
+        "Предупреждение, если паттерн уходит от нормы 3+ дня",
+        "Квартальные протоколы: VO₂max, гликация, биомаркеры",
+      ].map((line, i) => (
+        <View key={i} style={{ flexDirection: "row", gap: 6, marginLeft: 6 }}>
+          <Text style={{ color: PALETTE.calm, fontSize: FS.body }}>·</Text>
+          <Text
+            style={{
+              color: PALETTE.text,
+              fontSize: FS.body,
+              lineHeight: 1.5,
+              flex: 1,
+            }}
+          >
+            {line}
+          </Text>
+        </View>
+      ))}
+    </View>
+  </View>
+);
 
 const MaintenanceGrid: React.FC<{ tips: MaintenanceTip[] }> = ({ tips }) => (
   <View wrap={false} style={{ marginTop: 24, gap: 8 }}>
@@ -930,7 +1435,7 @@ const MaintenanceGrid: React.FC<{ tips: MaintenanceTip[] }> = ({ tips }) => (
             <Text style={[styles.mono, { color: PALETTE.calm }]}>{t.label}</Text>
           </View>
           <Text
-            style={{ color: PALETTE.textMuted, fontSize: 10, marginTop: 6, lineHeight: 1.5 }}
+            style={{ color: PALETTE.textMuted, fontSize: FS.body, marginTop: 6, lineHeight: 1.5 }}
           >
             {t.tip}
           </Text>
@@ -947,48 +1452,107 @@ const RadarPage: React.FC<{
   const domains = Object.values(score.domains);
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="06" label="Карта состояния" />
-      <View style={{ gap: 12 }}>
-        <Text style={styles.chip}>5 доменов</Text>
-        <Text style={[styles.display, { fontSize: 26 }]}>
+      {/* Background image — full-bleed, без вуали */}
+      <Image
+        src={imagePath("bg3.jpg")}
+        fixed
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: 595,
+          height: 842,
+          objectFit: "cover",
+        }}
+      />
+      <Header ordinal="06" label="Карта состояния" onDark />
+      <View wrap={false} style={{ gap: 8 }}>
+        <Text
+          style={{
+            alignSelf: "flex-start",
+            paddingVertical: 4,
+            paddingHorizontal: 10,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: "#FFFFFF",
+            color: "#FFFFFF",
+            fontSize: FS.caption,
+            letterSpacing: 0.5,
+            backgroundColor: "transparent",
+          }}
+        >
+          5 доменов
+        </Text>
+        <Text style={[styles.display, { fontSize: FS.headline, color: "#FFFFFF" }]}>
           Где вы сейчас — по каждой оси здоровья
         </Text>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 11, maxWidth: 460 }}>
+        <Text
+          style={{
+            color: "#FFFFFF",
+            fontSize: FS.body,
+            maxWidth: 460,
+            lineHeight: 1.4,
+          }}
+        >
           100 — оптимальный уровень. Чем ближе к центру, тем больше этот домен добавляет к
           оценке потери здоровых лет.
         </Text>
       </View>
 
-      <View wrap={false} style={{ marginTop: 18, flexDirection: "row", gap: 18, alignItems: "center" }}>
-        <RadarSvg domains={domains} size={260} />
-        <View style={{ flex: 1, gap: 8 }}>
+      <View
+        wrap={false}
+        style={{
+          marginTop: 12,
+          flexDirection: "row",
+          gap: 14,
+          alignItems: "center",
+          backgroundColor: "#FFFFFF",
+          borderRadius: 18,
+          padding: 16,
+          borderWidth: 1,
+          borderColor: PALETTE.border,
+        }}
+      >
+        <RadarSvg domains={domains} size={210} />
+        <View style={{ flex: 1, gap: 6 }}>
           {domains.map((d) => (
             <DomainRow key={d.key} domain={d} />
           ))}
         </View>
       </View>
 
-      <View style={{ marginTop: 22 }}>
-        <Text style={styles.mono}>Что вас защищает</Text>
-        <Text style={[styles.display, { fontSize: 18, marginTop: 6 }]}>Сильные стороны</Text>
+      <View wrap={false} style={{ marginTop: 14 }}>
+        <Text style={[styles.mono, { color: "#FFFFFF" }]}>Что вас защищает</Text>
+        <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 4, color: "#FFFFFF" }]}>
+          Сильные стороны
+        </Text>
         {protectors.length === 0 ? (
-          <View style={[styles.card, { marginTop: 10 }]}>
-            <Text style={{ color: PALETTE.textMuted, fontSize: 11, lineHeight: 1.6 }}>
+          <View style={[styles.card, { marginTop: 8, padding: 12 }]}>
+            <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
               Пока нет доменов в защитной зоне. Это не приговор — это стартовая точка. У 86%
               пользователей Longy хотя бы один домен переходит в зелёную зону за 8 недель.
             </Text>
           </View>
         ) : (
-          <View style={{ marginTop: 10, flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+          <View style={{ marginTop: 8, flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
             {protectors.map((p) => (
-              <View key={p.key} style={[styles.card, { flex: 1, minWidth: 220 }]}>
-                <Text style={[styles.display, { fontSize: 14 }]}>{p.headline}</Text>
+              <View
+                key={p.key}
+                wrap={false}
+                style={[
+                  styles.card,
+                  { flex: 1, minWidth: 220, padding: 12 },
+                ]}
+              >
+                <Text style={[styles.display, { fontSize: FS.label }]}>
+                  {p.headline}
+                </Text>
                 <Text
                   style={{
                     color: PALETTE.textMuted,
-                    fontSize: 10,
-                    marginTop: 6,
-                    lineHeight: 1.55,
+                    fontSize: FS.caption,
+                    marginTop: 4,
+                    lineHeight: 1.45,
                   }}
                 >
                   {p.detail}
@@ -999,7 +1563,7 @@ const RadarPage: React.FC<{
         )}
       </View>
 
-      <Footer />
+      <Footer onDark />
     </Page>
   );
 };
@@ -1007,41 +1571,48 @@ const RadarPage: React.FC<{
 const LongyPage: React.FC<{ answers: Answers }> = () => (
   <Page size="A4" style={styles.page}>
     <Header ordinal="07" label="Как Longy берёт это на себя" />
-    <View style={{ gap: 12 }}>
+    <View wrap={false} style={{ gap: 8 }}>
       <Text style={styles.chip}>Longy · Ваш AI health manager</Text>
-      <Text style={[styles.display, { fontSize: 26, lineHeight: 1.15 }]}>
+      <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
         Три вещи, которых нет больше{"\n"}ни в одном приложении
       </Text>
-      <Text style={{ color: PALETTE.textMuted, fontSize: 11, maxWidth: 480 }}>
+      <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480, lineHeight: 1.4 }}>
         Longy объединяет данные с Whoop, Oura, Apple Watch, Garmin и умных весов. Внутри
         работают AI-нутрициолог, AI-коуч, AI-терапевт и health manager — одновременно.
       </Text>
     </View>
 
-    <View style={{ marginTop: 20, gap: 10 }}>
+    <View style={{ marginTop: 12, gap: 8 }}>
       {LONGY_FEATURES.map((f, i) => (
-        <View key={f.title} style={[styles.card, { flexDirection: "row", gap: 14 }]}>
-          <View style={{ width: 48 }}>
+        <View
+          key={f.title}
+          wrap={false}
+          style={[
+            styles.card,
+            { flexDirection: "row", gap: 12, padding: 14 },
+          ]}
+        >
+          <View style={{ width: 40 }}>
             <Text
               style={[
                 styles.display,
-                { fontSize: 28, color: PALETTE.accent, lineHeight: 1 },
+                { fontSize: FS.headline, color: PALETTE.accent, lineHeight: 1 },
               ]}
             >
               0{i + 1}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.display, { fontSize: 17 }]}>{f.title}</Text>
-            <Text style={{ color: PALETTE.accent, fontSize: 10, marginTop: 4 }}>
+            <Text style={[styles.display, { fontSize: FS.label }]}>{f.title}</Text>
+            <Text style={{ color: PALETTE.accent, fontSize: FS.caption, marginTop: 3 }}>
               {f.tagline}
             </Text>
             <Text
               style={{
                 color: PALETTE.textMuted,
-                fontSize: 11,
-                marginTop: 8,
-                lineHeight: 1.55,
+                fontSize: FS.body,
+                marginTop: 6,
+                lineHeight: 1.45,
               }}
             >
               {f.description}
@@ -1049,9 +1620,9 @@ const LongyPage: React.FC<{ answers: Answers }> = () => (
             <Text
               style={{
                 color: PALETTE.textFaint,
-                fontSize: 10,
-                marginTop: 8,
-                lineHeight: 1.5,
+                fontSize: FS.caption,
+                marginTop: 6,
+                lineHeight: 1.4,
               }}
             >
               {f.why}
@@ -1069,86 +1640,257 @@ const FinalPage: React.FC<{
   name: string;
   score: ScoreResult;
   answers: Answers;
-}> = ({ name, score, answers }) => {
-  const conditionsRaw = answers.conditions ?? [];
-  const hasConditions = conditionsRaw.some(
-    (c) => c && c !== "none" && c !== "prefer_not_to_say",
-  );
-  const cta = coverCTA(score);
+}> = () => {
+  const bullets: { text: string; bold?: boolean }[] = [
+    { text: "Приложение Longy", bold: true },
+    { text: "Ваша команда: Консьерж здоровья + Тренер + Нутрициолог + Врач", bold: true },
+    { text: "Удобный план, настраиваемый под вас" },
+    { text: "Главная цель + 3 приоритета на каждый день" },
+    { text: "Тренировки, работающие для вас" },
+    { text: "Выполнимые рекомендации" },
+    { text: "Подключение носимых устройств и данных анализов" },
+  ];
 
   return (
-    <Page size="A4" style={styles.page}>
-      <Header ordinal="08" label="Следующий шаг" />
-      <View style={{ gap: 14 }}>
-        <Text style={styles.chip}>Глубокий аудит в приложении Longy</Text>
-        <Text style={[styles.display, { fontSize: 30, lineHeight: 1.12 }]}>
-          {name ? `${name}, ` : ""}этот отчёт — первый срез.{"\n"}
-          <Text style={{ color: PALETTE.accent }}>Глубже мы идём в приложении.</Text>
-        </Text>
-        <Text style={{ color: PALETTE.textMuted, fontSize: 12, maxWidth: 480, lineHeight: 1.55 }}>
-          В Longy мы подключаем данные с ваших устройств (Whoop, Oura, Apple Watch),
-          анализируем сон, HRV, стресс и активность в динамике, подбираем 5–10 анализов
-          под вашу картину и составляем протокол на 8 недель.
-          {hasConditions ? " С учётом ваших диагнозов и противопоказаний." : ""}
-        </Text>
-      </View>
-
-      <View style={{ marginTop: 22, gap: 10 }}>
-        <RoadmapRow num="7 дней" text="Подключение устройств и первые 3 шага протокола" />
-        <RoadmapRow num="21 день" text="Видимые изменения HRV, сна и энергии" />
-        <RoadmapRow
-          num="8 недель"
-          text={`Проекция: Longy Score ${score.longyScore} → ${score.projection.longyScoreTarget}, минус ~${Math.max(
-            0,
-            Math.round(
-              (score.yearsLifeLostTotal - score.projection.yearsLifeLostTarget) * 10,
-            ) / 10,
-          )} лет потерь здоровья`}
+    <Page
+      size="A4"
+      style={{
+        backgroundColor: PALETTE.bg,
+        fontFamily: "Geist",
+        padding: 0,
+      }}
+    >
+      <View wrap={false} style={{ width: 595, height: 842, position: "relative" }}>
+        {/* Centered logo */}
+        <Image
+          src={imagePath("logo.png")}
+          style={{
+            position: "absolute",
+            top: 40,
+            left: 595 / 2 - 40,
+            width: 80,
+            objectFit: "contain",
+          }}
         />
-        <RoadmapRow num="6 месяцев" text="Повторные анализы, динамика биомаркеров, корректировка плана" />
-      </View>
 
-      <View
-        style={{
-          marginTop: 24,
-          borderRadius: 20,
-          padding: 20,
-          backgroundColor: PALETTE.bgSoft,
-          borderWidth: 1,
-          borderColor: PALETTE.accent,
-        }}
-      >
-        <Text style={[styles.mono, { color: PALETTE.accent }]}>Что дальше</Text>
-        <Text style={[styles.display, { fontSize: 18, marginTop: 6, lineHeight: 1.25 }]}>
-          Получить глубокий аудит в приложении
-        </Text>
+        {/* Headline */}
         <Text
           style={{
-            color: PALETTE.textMuted,
-            fontSize: 11,
-            marginTop: 8,
-            lineHeight: 1.55,
+            position: "absolute",
+            top: 92,
+            left: 40,
+            width: 515,
+            fontFamily: "Geist",
+            fontWeight: 600,
+            fontSize: FS.display,
+            lineHeight: 1.15,
+            letterSpacing: -0.3,
+            textAlign: "center",
+            color: PALETTE.text,
           }}
         >
-          {cta}
+          Не добавляйте себе ещё один план. Добавьте команду.
         </Text>
-        <Text style={{ color: PALETTE.accent, fontSize: 12, marginTop: 12, fontWeight: 600 }}>
-          longy.health/app
+
+        {/* Intro paragraph */}
+        <Text
+          style={{
+            position: "absolute",
+            top: 186,
+            left: 40,
+            width: 515,
+            fontSize: FS.body,
+            lineHeight: 1.45,
+            textAlign: "center",
+            color: PALETTE.text,
+          }}
+        >
+          Большинство срывается не потому, что «плохой план». А потому что вы один. Longy — это
+          когда рядом про-команда, которая держит ритм и помогает не откатываться. Наука в
+          основе — сервис в исполнении.
         </Text>
+
+        {/* Main card: phone + right col */}
+        <View
+          style={{
+            position: "absolute",
+            top: 268,
+            left: 33,
+            width: 530,
+            height: 485,
+            borderRadius: 20,
+            backgroundColor: PALETTE.bgSoft,
+            padding: 18,
+          }}
+        >
+          {/* Phone image */}
+          <Image
+            src={imagePath("longy_app_phone.png")}
+            style={{
+              position: "absolute",
+              top: 11,
+              left: 12,
+              width: 227,
+              height: 464,
+              borderRadius: 24,
+              objectFit: "cover",
+            }}
+          />
+
+          {/* Right column */}
+          <View
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 255,
+              width: 262,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: FS.subhead,
+                lineHeight: 1.25,
+                fontWeight: 600,
+                letterSpacing: -0.3,
+                color: PALETTE.text,
+                marginBottom: 16,
+              }}
+            >
+              Что вы получаете с Longy:
+            </Text>
+
+            <View style={{ gap: 8, marginBottom: 18 }}>
+              {bullets.map((b, i) => (
+                <View key={i} style={{ flexDirection: "row", gap: 6 }}>
+                  <Text
+                    style={{
+                      fontSize: FS.body,
+                      lineHeight: 1.4,
+                      color: PALETTE.text,
+                      fontWeight: b.bold ? 700 : 400,
+                    }}
+                  >
+                    ·
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: FS.body,
+                      lineHeight: 1.4,
+                      letterSpacing: -0.3,
+                      color: PALETTE.text,
+                      fontWeight: b.bold ? 700 : 400,
+                      flex: 1,
+                    }}
+                  >
+                    {b.text}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* CTA button */}
+            <View
+              style={{
+                width: 215,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                backgroundColor: PALETTE.accent,
+                alignItems: "center",
+                marginBottom: 14,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: FS.label,
+                  fontWeight: 500,
+                }}
+              >
+                Продолжить с Longy
+              </Text>
+            </View>
+
+            {/* Mini links */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>longy.ai</Text>
+              <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>info@longy.ai</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Footer divider */}
+        <View
+          style={{
+            position: "absolute",
+            left: 25,
+            bottom: 56,
+            width: 545,
+            height: 1,
+            backgroundColor: PALETTE.textFaint,
+          }}
+        />
+
+        {/* Footer */}
+        <Text
+          style={{
+            position: "absolute",
+            left: 31,
+            bottom: 32,
+            fontSize: FS.caption,
+            color: PALETTE.textFaint,
+          }}
+        >
+          Не является клиническим диагнозом
+        </Text>
+        <View
+          style={{
+            position: "absolute",
+            right: 25,
+            bottom: 32,
+            flexDirection: "row",
+            gap: 14,
+          }}
+        >
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>Конфиденциальность</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>Условия</Text>
+        </View>
       </View>
-
-      <ScientificCredibilityBlock />
-
-      <Footer />
     </Page>
   );
 };
 
+const MethodologyPage: React.FC = () => (
+  <Page size="A4" style={styles.page}>
+    <Header ordinal="09" label="Методология" />
+    <View wrap={false} style={{ gap: 8 }}>
+      <Text style={styles.chip}>Методология отчёта</Text>
+      <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
+        На чём построен этот отчёт
+      </Text>
+      <Text
+        style={{
+          color: PALETTE.textMuted,
+          fontSize: FS.body,
+          maxWidth: 480,
+          lineHeight: 1.4,
+        }}
+      >
+        Скрининговые инструменты и исследовательская база, на которые опирается Longy.
+      </Text>
+    </View>
+
+    <ScientificCredibilityBlock />
+
+    <Footer />
+  </Page>
+);
+
 const SCIENTIFIC_INSTRUMENTS = [
-  "University of Pennsylvania",
-  "National Institutes of Health",
-  "International Mediation Campus",
-  "Duke Health",
+  { file: "logos/1.jpg", alt: "University of Pennsylvania" },
+  { file: "logos/2.jpg", alt: "National Institutes of Health" },
+  { file: "logos/3.jpg", alt: "International Mediation Campus" },
+  { file: "logos/4.jpg", alt: "Duke Health" },
 ];
 
 const ScientificCredibilityBlock: React.FC = () => (
@@ -1163,14 +1905,14 @@ const ScientificCredibilityBlock: React.FC = () => (
       backgroundColor: "#FFFFFF",
     }}
   >
-    <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.55 }}>
+    <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.55 }}>
       Отчёт построен на клинически валидированных скрининговых инструментах с
       подтверждёнными психометрическими свойствами: Insomnia Severity Index (ISI-7) для
       оценки сна, Perceived Stress Scale (PSS-10) и PROMIS Fatigue 7a для стресса и
       энергии, Duke Activity Status Index (DASI) и IPAQ-SF для функционального статуса и
       физической активности, Mini-EAT для питания.
     </Text>
-    <Text style={{ color: PALETTE.text, fontSize: 10, lineHeight: 1.55, marginTop: 10 }}>
+    <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.55, marginTop: 10 }}>
       * Методология Longy вдохновлена исследованием Li et al. (Harvard Medical School,
       J Intern Med 2024) о 5 факторах долголетия, дающих до +12 лет здоровой жизни на
       выборке 2 млн+ человек. Применён собственный алгоритм калибровки под
@@ -1182,32 +1924,25 @@ const ScientificCredibilityBlock: React.FC = () => (
       style={{
         marginTop: 14,
         flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
+        gap: 12,
+        alignItems: "center",
+        justifyContent: "space-between",
       }}
     >
-      {SCIENTIFIC_INSTRUMENTS.map((label) => (
+      {SCIENTIFIC_INSTRUMENTS.map((inst) => (
         <View
-          key={label}
+          key={inst.alt}
           style={{
-            borderWidth: 1,
-            borderColor: PALETTE.border,
-            borderRadius: 8,
-            paddingVertical: 6,
-            paddingHorizontal: 10,
-            backgroundColor: PALETTE.bgSoft,
+            flex: 1,
+            height: 32,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <Text
-            style={{
-              fontSize: 9,
-              color: PALETTE.textMuted,
-              letterSpacing: 0.5,
-              textTransform: "uppercase",
-            }}
-          >
-            {label}
-          </Text>
+          <Image
+            src={imagePath(inst.file)}
+            style={{ height: 32, maxWidth: "100%", objectFit: "contain" }}
+          />
         </View>
       ))}
     </View>
@@ -1216,6 +1951,7 @@ const ScientificCredibilityBlock: React.FC = () => (
 
 const RoadmapRow = ({ num, text }: { num: string; text: string }) => (
   <View
+    wrap={false}
     style={{
       flexDirection: "row",
       borderWidth: 1,
@@ -1229,12 +1965,12 @@ const RoadmapRow = ({ num, text }: { num: string; text: string }) => (
     <Text
       style={[
         styles.display,
-        { fontSize: 16, color: PALETTE.accent, width: 80 },
+        { fontSize: FS.subhead, color: PALETTE.accent, width: 80 },
       ]}
     >
       {num}
     </Text>
-    <Text style={{ color: PALETTE.text, fontSize: 11, flex: 1, lineHeight: 1.5 }}>{text}</Text>
+    <Text style={{ color: PALETTE.text, fontSize: FS.body, flex: 1, lineHeight: 1.5 }}>{text}</Text>
   </View>
 );
 
@@ -1245,12 +1981,12 @@ const DomainRow = ({ domain }: { domain: DomainScore }) => {
     <View style={{ gap: 4 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
         <View style={{ flex: 1, paddingRight: 6 }}>
-          <Text style={{ color: PALETTE.text, fontSize: 10 }}>{domain.label}</Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: 8, marginTop: 2 }}>
+          <Text style={{ color: PALETTE.text, fontSize: FS.body }}>{domain.label}</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption, marginTop: 2 }}>
             ≈{domain.yearsLifeLost.toFixed(1)} лет в модели
           </Text>
         </View>
-        <Text style={{ color, fontSize: 10, fontFamily: "Geist" }}>{domain.score0to100}</Text>
+        <Text style={{ color, fontSize: FS.body, fontFamily: "Geist" }}>{domain.score0to100}</Text>
       </View>
       <View
         style={{
@@ -1266,7 +2002,15 @@ const DomainRow = ({ domain }: { domain: DomainScore }) => {
   );
 };
 
-const LegendPill = ({ color, label }: { color: string; label: string }) => (
+const LegendPill = ({
+  color,
+  label,
+  active,
+}: {
+  color: string;
+  label: string;
+  active?: boolean;
+}) => (
   <View
     style={{
       flexDirection: "row",
@@ -1276,13 +2020,33 @@ const LegendPill = ({ color, label }: { color: string; label: string }) => (
       paddingHorizontal: 8,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: PALETTE.border,
+      borderColor: active ? color : PALETTE.border,
+      backgroundColor: active ? "#FFFFFF" : "transparent",
     }}
   >
     <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-    <Text style={{ color: PALETTE.textMuted, fontSize: 8 }}>{label}</Text>
+    <Text
+      style={{
+        color: active ? PALETTE.text : PALETTE.textMuted,
+        fontSize: FS.caption,
+        fontWeight: active ? 700 : 400,
+      }}
+    >
+      {label}
+    </Text>
   </View>
 );
+
+// Velocity → zone key, used to highlight the active LegendPill.
+function velocityZoneKey(
+  velocity: number,
+): "below" | "normal" | "acceleration" | "risk" | "critical" {
+  if (velocity < 0) return "below";
+  if (velocity < 8) return "normal";
+  if (velocity < 18) return "acceleration";
+  if (velocity < 28) return "risk";
+  return "critical";
+}
 
 const WaterfallSvg = ({
   items,
@@ -1295,8 +2059,8 @@ const WaterfallSvg = ({
   width: number;
   height: number;
 }) => {
-  const padLeft = 110;
-  const padRight = 40;
+  const padLeft = 28;
+  const padRight = 16;
   const padTop = 10;
   const padBottom = 28;
   const chartW = width - padLeft - padRight;
@@ -1352,18 +2116,53 @@ const WaterfallSvg = ({
   const totalColor =
     totalYears > 6 ? PALETTE.warm : totalYears > 2 ? PALETTE.amber : PALETTE.accent;
 
+  const yTickStep = maxCum > 8 ? 2 : 1;
+  const yTicks: number[] = [];
+  for (let v = Math.ceil(minCum); v <= Math.floor(maxCum); v += yTickStep) {
+    yTicks.push(v);
+  }
+  if (!yTicks.includes(0)) yTicks.push(0);
+  yTicks.sort((a, b) => a - b);
+
   return (
     <View style={{ width, height, position: "relative" }}>
       <Svg width={width} height={height}>
-        {/* Шкала слева: метки 0 и max */}
+        {/* Сетка: горизонтальные линии на каждом тике */}
+        {yTicks.map((t) => (
+          <Line
+            key={`grid-${t}`}
+            x1={padLeft}
+            y1={yFor(t)}
+            x2={width - padRight}
+            y2={yFor(t)}
+            stroke={t === 0 ? PALETTE.textMuted : PALETTE.border}
+            strokeWidth={t === 0 ? 1 : 0.5}
+            strokeDasharray={t === 0 ? undefined : "2 3"}
+          />
+        ))}
+
+        {/* Ось Y: вертикальная линия слева */}
         <Line
           x1={padLeft}
-          y1={baselineY}
-          x2={width - padRight}
-          y2={baselineY}
-          stroke={PALETTE.border}
+          y1={padTop}
+          x2={padLeft}
+          y2={height - padBottom}
+          stroke={PALETTE.textMuted}
           strokeWidth={1}
         />
+
+        {/* Риски (tick marks) на оси Y */}
+        {yTicks.map((t) => (
+          <Line
+            key={`tick-${t}`}
+            x1={padLeft - 4}
+            y1={yFor(t)}
+            x2={padLeft}
+            y2={yFor(t)}
+            stroke={PALETTE.textMuted}
+            strokeWidth={1}
+          />
+        ))}
 
         {/* Столбцы доменов */}
         {bars.map((b, i) => {
@@ -1405,6 +2204,42 @@ const WaterfallSvg = ({
           strokeDasharray="2 2"
         />
       </Svg>
+
+      {/* Подписи тиков на оси Y */}
+      {yTicks.map((t) => (
+        <Text
+          key={`ylbl-${t}`}
+          style={{
+            position: "absolute",
+            top: yFor(t) - 4,
+            left: 0,
+            width: padLeft - 8,
+            textAlign: "right",
+            fontSize: 7,
+            color: PALETTE.textMuted,
+          }}
+        >
+          {t > 0 ? `+${t}` : `${t}`}
+        </Text>
+      ))}
+
+      {/* Заголовок оси Y */}
+      <Text
+        style={{
+          position: "absolute",
+          top: padTop - 4,
+          left: 0,
+          width: padLeft - 8,
+          textAlign: "right",
+          fontSize: 7,
+          color: PALETTE.textFaint,
+          letterSpacing: 0.6,
+          textTransform: "uppercase",
+          fontWeight: 600,
+        }}
+      >
+        лет
+      </Text>
 
       {/* Подписи баров снизу и значений сверху */}
       {bars.map((b) => {
@@ -1451,7 +2286,7 @@ const WaterfallSvg = ({
             top: totalYTop - 14,
             width: barW + 36,
             textAlign: "center",
-            fontSize: 9,
+            fontSize: FS.caption,
             color: totalColor,
             fontWeight: 700,
           }}
@@ -1574,7 +2409,7 @@ const ImpactPreviewSvg = ({
           left: leftX,
           width: barW,
           textAlign: "center",
-          fontSize: 16,
+          fontSize: FS.subhead,
           fontFamily: "Geist",
           fontWeight: 700,
           color: nowColor,
@@ -1589,7 +2424,7 @@ const ImpactPreviewSvg = ({
           left: rightX,
           width: barW,
           textAlign: "center",
-          fontSize: 16,
+          fontSize: FS.subhead,
           fontFamily: "Geist",
           fontWeight: 700,
           color: PALETTE.accent,
@@ -1800,7 +2635,7 @@ const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) =
           >
             <Text
               style={{
-                fontSize: 9,
+                fontSize: FS.caption,
                 color: d.isGoalFocus ? PALETTE.accent : PALETTE.textMuted,
                 fontWeight: d.isGoalFocus ? 600 : 400,
                 letterSpacing: 0.3,
