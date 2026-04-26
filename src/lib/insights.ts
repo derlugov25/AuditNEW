@@ -684,15 +684,12 @@ function formatHeadlineYears(y: number): string {
 export function verdictLifeYearsHeadlineLines(score: ScoreResult): string[] | null {
   const y = score.yearsLifeLostTotal;
 
-  if (y < 0.5) {
-    const potential = Math.max(
-      3,
-      Math.round(score.healthspanMax - score.healthspanYears + 3),
-    );
+  if (score.isGainBranch) {
+    const potential = Math.max(1, Math.round(score.gainPotentialYears));
     return [
       "У вас крепкая база",
-      `Можно добрать до +${potential} здоровых лет`,
-      "за счёт тонкой настройки",
+      `Можно добрать ещё +${potential} здоровых лет`,
+      "за счёт precision-инструментов",
     ];
   }
 
@@ -835,15 +832,12 @@ export function buildProtectors(score: ScoreResult): ProtectorInsight[] {
 export function lifeYearsHeadline(score: ScoreResult): string {
   const y = score.yearsLifeLostTotal;
 
-  if (y < 0.5) {
-    const potential = Math.max(
-      3,
-      Math.round(score.healthspanMax - score.healthspanYears + 3),
-    );
+  if (score.isGainBranch) {
+    const potential = Math.max(1, Math.round(score.gainPotentialYears));
     return [
       "У вас крепкая база",
-      `С Longy можно добрать до +${potential} здоровых лет`,
-      "за счёт тонкой настройки сна, восстановления и метаболизма",
+      `С Longy можно добрать ещё до +${potential} здоровых лет`,
+      "за счёт precision-инструментов поверх образа жизни",
     ].join("\n");
   }
 
@@ -884,13 +878,14 @@ export function coverSubtitle(score: ScoreResult): string {
   const band = score.longyScoreBand;
   const y = score.yearsLifeLostTotal;
 
-  // GAIN-ветка (< 0.5 года потерь)
-  if (y < 0.5) {
+  // GAIN-ветка — переключение по isGainBranch (longyScore≥80, потерь<0.5)
+  if (score.isGainBranch) {
+    const gain = Math.max(1, Math.round(score.gainPotentialYears));
     switch (band) {
       case "excellent":
-        return "Вы идёте лучше большинства людей вашего возраста. Ниже — пять точек, где можно дожать ещё, и что Longy делает с каждой.";
+        return `Вы идёте лучше большинства людей вашего возраста. Ниже — где можно добрать ещё ~${gain} лет здоровой жизни через precision-инструменты Longy.`;
       case "good":
-        return "Крепкая база по всем факторам. Разбираем, где есть запас для тонкой настройки.";
+        return "Крепкая база по всем факторам. Разбираем, где Longy добавляет точечный апсайд через данные с устройств.";
       default:
         return "По основным факторам всё в норме. Ниже — разбор, где можно укрепить результат.";
     }

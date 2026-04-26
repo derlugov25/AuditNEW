@@ -50,6 +50,14 @@ export interface ScoreResult {
   yearsLifeLostTotal: number;
   velocityWaterfall: WaterfallItem[];
   projection: Projection;
+
+  // Гипотетические дополнительные годы СВЕРХ 12-летнего healthspan Li et al.,
+  // которые Longy даёт через precision-инструменты (HRV, нутригенетика, маркеры
+  // воспаления). Считаются только когда score крепкий (≥80, потерь <0.5).
+  // В UI используются в GAIN-ветке вместо yearsLifeLostTotal.
+  gainPotentialYears: number;
+  gainPotentialWaterfall: WaterfallItem[];
+  isGainBranch: boolean;
 }
 
 // Li et al., J Intern Med 2024 — 5 доменов (social удалён), сумма 12 лет сохранена
@@ -377,6 +385,37 @@ const bmiAnalysis = (a: Answers) => {
   };
 };
 
+// Максимальный гипотетический бонус (в годах) сверх 12-летнего healthspan,
+// который Longy может дать через precision-инструменты по каждому домену.
+// Сумма = 5 лет — это потолок «можно добрать».
+const GAIN_MAX_PER_DOMAIN: Record<DomainKey, number> = {
+  sleep: 1.5,
+  movement: 1.2,
+  nutrition: 1.0,
+  habits: 0.8,
+  stress: 0.5,
+};
+
+function buildGainPotential(
+  domains: Record<DomainKey, DomainScore>,
+): { years: number; items: WaterfallItem[] } {
+  // Бонус по домену = (score / 100) × GAIN_MAX × коэффициент_зрелости.
+  // Maturity = (score - 75) / 25: при score=100 → 100% бонуса, при 75 → 0.
+  // Это мотивирует сначала довести базу, потом получать precision-бонус.
+  const items: WaterfallItem[] = (Object.values(domains) as DomainScore[]).map((d) => {
+    const maturity = Math.max(0, Math.min(1, (d.score0to100 - 75) / 25));
+    const bonusYears = (d.score0to100 / 100) * GAIN_MAX_PER_DOMAIN[d.key] * maturity;
+    return {
+      key: d.key,
+      label: d.label,
+      delta: 0,
+      yearsLost: Math.round(bonusYears * 10) / 10,
+    };
+  });
+  const years = Math.round(items.reduce((s, i) => s + i.yearsLost, 0) * 10) / 10;
+  return { years, items };
+}
+
 export function calculateScore(a: Answers): ScoreResult {
   const stress = stressDomain(a);
   const sleep = sleepDomain(a);
@@ -541,6 +580,16 @@ export function calculateScore(a: Answers): ScoreResult {
     deltaVelocity: Math.round((agingVelocityPct - velocityTarget) * 10) / 10,
   };
 
+  // Gain-ветка активируется, когда базовый образ жизни уже крепкий
+  // (longyScore ≥ 80 и потерь почти нет). Тогда UI переключается с
+  // «починки доменов» на «precision-бонус сверху».
+  const isGainBranch =
+    longyScore >= 80 && yearsLifeLostTotalRounded < 0.5;
+
+  const gain = isGainBranch
+    ? buildGainPotential(domainsOut)
+    : { years: 0, items: [] as WaterfallItem[] };
+
   return {
     agingVelocityPct: Math.round(agingVelocityPct * 10) / 10,
     longyScore,
@@ -559,5 +608,8 @@ export function calculateScore(a: Answers): ScoreResult {
     yearsLifeLostTotal: Math.round(yearsLifeLostTotalRounded * 10) / 10,
     velocityWaterfall,
     projection,
+    gainPotentialYears: gain.years,
+    gainPotentialWaterfall: gain.items,
+    isGainBranch,
   };
 }

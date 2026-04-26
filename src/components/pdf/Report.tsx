@@ -85,6 +85,7 @@ const PALETTE = {
   danger: "#C03A2B",
   calm: "#00B158",
   amber: "#F5A623",
+  good: "#1F7A3A",
 };
 
 // Type scale — 8 tiers, modular ratio ~1.2–1.33.
@@ -643,27 +644,37 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
             })()
           : (() => {
               const md = pickMainDriver(answers, score);
+              const driverLabel = score.isGainBranch ? "Главная точка роста" : T.cover.mainDriver;
               if (!md) {
                 return (
                   <View style={[styles.card, { flex: 1 }]}>
-                    <Text style={styles.mono}>{T.cover.mainDriver}</Text>
+                    <Text style={styles.mono}>{driverLabel}</Text>
                     <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.15 }]}>
                       {T.cover.mainDriverEmpty}
                     </Text>
                   </View>
                 );
               }
+              const gainYears = score.gainPotentialWaterfall.find((w) => w.key === md.domain.key)?.yearsLost ?? 0;
               return (
                 <View style={[styles.card, { flex: 1 }]}>
-                  <Text style={styles.mono}>{T.cover.mainDriver}</Text>
+                  <Text style={styles.mono}>{driverLabel}</Text>
                   <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.2 }]}>
                     {md.headline}
                   </Text>
                   <Text style={{ color: PALETTE.textMuted, marginTop: 6, fontSize: FS.body, lineHeight: 1.4 }}>
                     {md.subtext}
                   </Text>
-                  <Text style={{ color: PALETTE.warm, marginTop: 8, fontSize: FS.body }}>
-                    {T.cover.yearsOfLife(md.domain.yearsLifeLost.toFixed(1))}
+                  <Text
+                    style={{
+                      color: score.isGainBranch ? PALETTE.accent : PALETTE.warm,
+                      marginTop: 8,
+                      fontSize: FS.body,
+                    }}
+                  >
+                    {score.isGainBranch
+                      ? `+${gainYears.toFixed(1)} лет потенциал`
+                      : T.cover.yearsOfLife(md.domain.yearsLifeLost.toFixed(1))}
                   </Text>
                 </View>
               );
@@ -921,6 +932,32 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
 };
 
 const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
+  if (score.isGainBranch) return <HealthspanStripGain score={score} />;
+  return <HealthspanStripLoss score={score} />;
+};
+
+const healthspanStripStyle = {
+  marginTop: 18,
+  borderRadius: 16,
+  padding: 16,
+  backgroundColor: PALETTE.bgSoft,
+  borderWidth: 1,
+  borderColor: PALETTE.border,
+  flexDirection: "row" as const,
+  alignItems: "center" as const,
+  gap: 18,
+};
+
+const progressBarOuter = {
+  marginTop: 10,
+  height: 6,
+  borderRadius: 3,
+  backgroundColor: "#E8E8E8",
+  overflow: "hidden" as const,
+  flexDirection: "row" as const,
+};
+
+const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
   const years = score.healthspanYears;
   const max = score.healthspanMax;
   const gap = Math.max(0, Math.round((max - years) * 10) / 10);
@@ -933,35 +970,11 @@ const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
       : `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас вы набираете +${years.toFixed(1)} — ещё +${gap} остаются в запасе и возвращаются привычками.`;
 
   return (
-    <View
-      style={{
-        marginTop: 18,
-        borderRadius: 16,
-        padding: 16,
-        backgroundColor: PALETTE.bgSoft,
-        borderWidth: 1,
-        borderColor: PALETTE.border,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 18,
-      }}
-    >
+    <View style={healthspanStripStyle}>
       <View style={{ minWidth: 140 }}>
         <Text style={styles.mono}>Healthspan · Li et al. 2024</Text>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "baseline",
-            gap: 6,
-            marginTop: 6,
-          }}
-        >
-          <Text
-            style={[
-              styles.numStat,
-              { fontSize: FS.display, color: gapColor },
-            ]}
-          >
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 6 }}>
+          <Text style={[styles.numStat, { fontSize: FS.display, color: gapColor }]}>
             +{gap.toFixed(1)}
           </Text>
           <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>лет возможно получить</Text>
@@ -975,16 +988,7 @@ const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
           {narrative}
         </Text>
-        <View
-          style={{
-            marginTop: 10,
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: "#E8E8E8",
-            overflow: "hidden",
-            flexDirection: "row",
-          }}
-        >
+        <View style={progressBarOuter}>
           <View
             style={{
               width: `${Math.round(fillPct * 100)}%`,
@@ -993,11 +997,44 @@ const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
               opacity: 0.5,
             }}
           />
+          <View style={{ flex: 1, height: "100%", backgroundColor: gapColor }} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const HealthspanStripGain: React.FC<{ score: ScoreResult }> = ({ score }) => {
+  const gain = Math.max(1, Math.round(score.gainPotentialYears));
+  const fillPct = Math.min(1, score.gainPotentialYears / 5);
+
+  return (
+    <View style={healthspanStripStyle}>
+      <View style={{ minWidth: 140 }}>
+        <Text style={styles.mono}>Дополнительный потенциал</Text>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 6 }}>
+          <Text style={[styles.numStat, { fontSize: FS.display, color: PALETTE.accent }]}>
+            +{gain}
+          </Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>лет можно добрать</Text>
+        </View>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, marginTop: 4 }}>
+          сверх 12-летнего healthspan Li et al.
+        </Text>
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
+          Ваш образ жизни уже работает на вас — 12 лет healthspan по Li et al. в кармане.* Дальше Longy
+          подключает данные с устройств, нутригенетику и маркеры воспаления, чтобы добрать ещё ~{gain} лет
+          через precision-настройку.
+        </Text>
+        <View style={progressBarOuter}>
           <View
             style={{
-              flex: 1,
+              width: `${Math.round(fillPct * 100)}%`,
               height: "100%",
-              backgroundColor: gapColor,
+              backgroundColor: PALETTE.accent,
             }}
           />
         </View>
@@ -1132,20 +1169,34 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
   const hasLeverage = proj.deltaScore > 0;
   const tone = reportTone(score);
   const isOptimize = tone === "optimize";
-  const maintenanceTips = isOptimize && !hasLeverage ? buildMaintenanceTips(score) : [];
-  const chipLabel = isOptimize
-    ? "Реализованный потенциал"
-    : "Из чего складывается потеря лет";
-  const headline = isOptimize
-    ? "Сколько здоровых лет вы уже набираете"
-    : "Сколько здоровых лет «стоит» каждый домен — и что вернуть, если починить топ-3";
-  const subhead = isOptimize
-    ? `Healthspan-модель даёт до +${score.healthspanMax} лет за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)}.`
-    : null;
+  const isGain = score.isGainBranch;
+  const maintenanceTips = !isGain && isOptimize && !hasLeverage ? buildMaintenanceTips(score) : [];
+
+  let chipLabel: string;
+  let headline: string;
+  let subhead: string | null;
+  let headerLabel: string;
+  if (isGain) {
+    chipLabel = "Дополнительный потенциал";
+    headline = "Сколько лет можно добрать в каждом домене";
+    subhead =
+      "Все 5 доменов уже на сильной базе. Ниже — гипотетический бонус, который Longy даёт через precision-инструменты по каждому домену. Это не «починка», а тонкая настройка сверху.";
+    headerLabel = "Дополнительный потенциал";
+  } else if (isOptimize) {
+    chipLabel = "Реализованный потенциал";
+    headline = "Сколько здоровых лет вы уже набираете";
+    subhead = `Healthspan-модель даёт до +${score.healthspanMax} лет за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)}.`;
+    headerLabel = "Реализованный потенциал";
+  } else {
+    chipLabel = "Из чего складывается потеря лет";
+    headline = "Сколько здоровых лет «стоит» каждый домен — и что вернуть, если починить топ-3";
+    subhead = null;
+    headerLabel = "Цена и проекция";
+  }
 
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="05" label={isOptimize ? "Реализованный потенциал" : "Цена и проекция"} />
+      <Header ordinal="05" label={headerLabel} />
       <View wrap={false} style={{ gap: 8 }}>
         <Text style={styles.chip}>{chipLabel}</Text>
         <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.1 }]}>
@@ -1165,9 +1216,24 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
         )}
       </View>
 
-      {/* Waterfall или fallback */}
+      {/* Waterfall: gain — бонус по доменам; иначе loss или RealizedPotential */}
       <View wrap={false} style={{ marginTop: 14 }}>
-        {score.yearsLifeLostTotal < 1 ? (
+        {isGain ? (
+          <>
+            <Text style={styles.mono}>
+              Потенциал · +{score.gainPotentialYears.toFixed(1)} лет можно добрать
+            </Text>
+            <View style={{ marginTop: 6 }}>
+              <WaterfallSvg
+                items={score.gainPotentialWaterfall}
+                totalYears={score.gainPotentialYears}
+                width={515}
+                height={160}
+                mode="gain"
+              />
+            </View>
+          </>
+        ) : score.yearsLifeLostTotal < 1 ? (
           <RealizedPotentialBlock score={score} />
         ) : (
           <>
@@ -1186,8 +1252,10 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
         )}
       </View>
 
-      {/* Нижний блок: поддержание (optimize без leverage), рост (fix/recover), или maintain-view */}
-      {isOptimize ? (
+      {/* Нижний блок: gain → GainGrid, optimize без leverage → maintenance, optimize → maintain, остальное → рост */}
+      {isGain ? (
+        <GainGrid score={score} />
+      ) : isOptimize ? (
         maintenanceTips.length > 0 ? (
           <MaintenanceGrid tips={maintenanceTips} />
         ) : (
@@ -1419,6 +1487,72 @@ const MaintainProjectionBlock: React.FC<{ score: ScoreResult }> = ({ score }) =>
   </View>
 );
 
+const GAIN_DESCRIPTIONS: Record<DomainKey, string> = {
+  sleep:
+    "Непрерывный анализ HRV, REM/глубоких фаз и циркадного chronotype. Подбор тонких сдвигов времени отбоя на основе ваших данных, а не общих рекомендаций.",
+  movement:
+    "Периодизация по реальным данным восстановления. Анти-fragility подход: больше прогресса там, где организм готов, меньше — где ресурс на исходе.",
+  nutrition:
+    "Нутригенетика и маркеры воспаления. Точная настройка под ваш генотип и микробиом — то, что общими рекомендациями не закрыть.",
+  habits:
+    "Удержание чистого нуля + раннее обнаружение сдвигов через биомаркеры регенерации. Защита того, что уже работает.",
+  stress:
+    "HRV-биофидбек в реальном времени. Раннее обнаружение перегруза до того, как он накопится в кортизол и воспаление.",
+};
+
+const GainGrid: React.FC<{ score: ScoreResult }> = ({ score }) => {
+  const items = score.gainPotentialWaterfall.filter((i) => i.yearsLost > 0);
+
+  return (
+    <View wrap={false} style={{ marginTop: 24, gap: 8 }}>
+      <Text style={styles.mono}>Что Longy добавляет сверху · по каждому домену</Text>
+      <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {items.map((it) => {
+          const desc = GAIN_DESCRIPTIONS[it.key as DomainKey];
+          return (
+            <View
+              key={it.key}
+              style={{
+                width: "48%",
+                borderRadius: 14,
+                padding: 12,
+                backgroundColor: "#FEF8F4",
+                borderWidth: 1,
+                borderColor: PALETTE.accent,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                }}
+              >
+                <Text style={[styles.mono, { color: PALETTE.accent }]}>
+                  {shortLabelFor(it.key, it.label)}
+                </Text>
+                <Text style={{ color: PALETTE.accent, fontSize: FS.label, fontWeight: "bold" }}>
+                  +{it.yearsLost.toFixed(1)} лет
+                </Text>
+              </View>
+              <Text
+                style={{
+                  color: PALETTE.textMuted,
+                  fontSize: FS.caption,
+                  lineHeight: 1.45,
+                  marginTop: 6,
+                }}
+              >
+                {desc}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
 const MaintenanceGrid: React.FC<{ tips: MaintenanceTip[] }> = ({ tips }) => (
   <View wrap={false} style={{ marginTop: 24, gap: 8 }}>
     <Text style={styles.mono}>Протокол поддержания · по каждому домену</Text>
@@ -1643,7 +1777,7 @@ const FinalPage: React.FC<{
 }> = () => {
   const bullets: { text: string; bold?: boolean }[] = [
     { text: "Приложение Longy", bold: true },
-    { text: "Ваша команда: Консьерж здоровья + Тренер + Нутрициолог + Врач", bold: true },
+    { text: "Ваша команда: AI-Консьерж здоровья + AI-коуч + AI-Нутрициолог", bold: true },
     { text: "Удобный план, настраиваемый под вас" },
     { text: "Главная цель + 3 приоритета на каждый день" },
     { text: "Тренировки, работающие для вас" },
@@ -2053,11 +2187,13 @@ const WaterfallSvg = ({
   totalYears,
   width,
   height,
+  mode = "loss",
 }: {
   items: WaterfallItem[];
   totalYears: number;
   width: number;
   height: number;
+  mode?: "loss" | "gain";
 }) => {
   const padLeft = 28;
   const padRight = 16;
@@ -2096,7 +2232,12 @@ const WaterfallSvg = ({
     const yBot = yFor(low);
     const x = padLeft + i * colW + (colW - barW) / 2;
     const isPositive = item.yearsLost >= 0;
-    const color = isPositive ? colorFor(item.delta) : PALETTE.calm;
+    const color =
+      mode === "gain"
+        ? PALETTE.accent
+        : isPositive
+          ? colorFor(item.delta)
+          : PALETTE.calm;
     return {
       key: item.key,
       label: item.label,
@@ -2114,7 +2255,13 @@ const WaterfallSvg = ({
   const totalYTop = yFor(Math.max(0, totalYears));
   const totalYBot = yFor(Math.min(0, totalYears));
   const totalColor =
-    totalYears > 6 ? PALETTE.warm : totalYears > 2 ? PALETTE.amber : PALETTE.accent;
+    mode === "gain"
+      ? PALETTE.good
+      : totalYears > 6
+        ? PALETTE.warm
+        : totalYears > 2
+          ? PALETTE.amber
+          : PALETTE.accent;
 
   const yTickStep = maxCum > 8 ? 2 : 1;
   const yTicks: number[] = [];
@@ -2291,7 +2438,7 @@ const WaterfallSvg = ({
             fontWeight: 700,
           }}
         >
-          ≈{totalYears.toFixed(1)} лет
+          {mode === "gain" ? "+" : "≈"}{totalYears.toFixed(1)} лет
         </Text>
         <Text
           style={{
