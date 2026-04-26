@@ -86,14 +86,14 @@ const DICT: Record<Lang, Dict> = {
       headlineOptimizeLine2: " вас от старения",
       methodology:
         "Методология: Li et al., J Intern Med 2024 · 5 доменов · 21 параметр + хронические заболевания",
-      longyScore: "Longy Score *",
+      longyScore: "Longy Health Score *",
       outOf100: "/ 100",
       mainDriver: "Главный драйвер",
       strongestSupport: "Ваша сильнейшая опора",
       mainDriverEmpty: "—",
       yearsOfLife: (years) => `≈${years} лет здоровой жизни`,
-      topPercent: (n) => `Вы в верхней ${n}% среди ровесников по Longy Score`,
-      percentileChip: "Ранг по Longy Score",
+      topPercent: (n) => `Вы в верхней ${n}% среди ровесников по Longy Health Score`,
+      percentileChip: "Ранг по Longy Health Score",
     },
     final: {
       ctaLabel: "Что дальше",
@@ -137,13 +137,13 @@ const DICT: Record<Lang, Dict> = {
       headlineOptimizeLine2: " you from aging",
       methodology:
         "Method: Li et al., J Intern Med 2024 · 5 domains · 21 parameters + chronic conditions",
-      longyScore: "Longy Score *",
+      longyScore: "Longy Health Score *",
       outOf100: "/ 100",
       mainDriver: "Main driver",
       strongestSupport: "Your strongest pillar",
       mainDriverEmpty: "—",
       yearsOfLife: (years) => `≈${years} years of healthy life`,
-      topPercent: (n) => `You are in the top ${n}% among peers by Longy Score`,
+      topPercent: (n) => `You are in the top ${n}% among peers by Longy Health Score`,
       percentileChip: "Your rank vs peers",
     },
     final: {

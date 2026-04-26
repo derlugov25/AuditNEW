@@ -39,7 +39,7 @@ function main() {
 
   console.log("\n─── Результат скоринга ─────────────────────────────");
   console.log(
-    `  Longy Score:         ${score.longyScore} / 100  (${score.longyScoreBand})`,
+    `  Longy Health Score:  ${score.longyScore} / 100  (${score.longyScoreBand})`,
   );
   console.log(
     `  Потеря здоровых лет: ≈${score.yearsLifeLostTotal.toFixed(1)} лет (модель; velocity ${score.agingVelocityPct > 0 ? "+" : ""}${score.agingVelocityPct}%)`,
@@ -67,7 +67,7 @@ function main() {
   const p = score.projection;
   if (p.deltaScore > 0) {
     console.log(
-      `  Проекция (8 нед.):   Longy Score ${p.longyScoreNow} → ${p.longyScoreTarget} (+${p.deltaScore}),  годы ≈${p.yearsLifeLostNow.toFixed(1)} → ≈${p.yearsLifeLostTarget.toFixed(1)}`,
+      `  Проекция (8 нед.):   Longy Health Score ${p.longyScoreNow} → ${p.longyScoreTarget} (+${p.deltaScore}),  годы ≈${p.yearsLifeLostNow.toFixed(1)} → ≈${p.yearsLifeLostTarget.toFixed(1)}`,
     );
   }
   console.log("────────────────────────────────────────────────────\n");

@@ -150,7 +150,7 @@ export default function ResultPage() {
           <div className="card p-8 md:col-span-2 flex flex-col md:flex-row items-center gap-8">
             <Speedometer velocityPct={velocity} size={260} />
             <div className="flex-1">
-              <div className="mono text-xs text-white/50">LONGY SCORE</div>
+              <div className="mono text-xs text-white/50">LONGY HEALTH SCORE</div>
               <div className="flex items-baseline gap-2 mt-1">
                 <div className="display text-6xl md:text-7xl">{score.longyScore}</div>
                 <div className="text-white/40 text-xl">/ 100</div>
@@ -163,12 +163,16 @@ export default function ResultPage() {
           </div>
 
           <div className="card p-8">
-            <div className="mono text-xs text-white/50">ГЛАВНЫЙ ДРАЙВЕР</div>
+            <div className="mono text-xs text-white/50">
+              {score.isGainBranch ? "ГЛАВНАЯ ТОЧКА РОСТА" : "ГЛАВНЫЙ ДРАЙВЕР"}
+            </div>
             <div className="display text-2xl mt-3 leading-tight">
               {score.topThree[0]?.label ?? "—"}
             </div>
-            <div className="mt-2 mono text-sm text-accent-warm">
-              минус ~{(score.topThree[0]?.yearsLifeLost ?? 0).toFixed(1)} лет здоровой жизни
+            <div className={`mt-2 mono text-sm ${score.isGainBranch ? "text-accent-primary" : "text-accent-warm"}`}>
+              {score.isGainBranch
+                ? `+${(score.gainPotentialWaterfall.find(w => w.key === score.topThree[0]?.key)?.yearsLost ?? 0).toFixed(1)} лет потенциал`
+                : `минус ~${(score.topThree[0]?.yearsLifeLost ?? 0).toFixed(1)} лет здоровой жизни`}
             </div>
             <div className="mt-6 pt-6 border-t border-white/10">
               <div className="mono text-xs text-white/50">ИНДЕКС МАССЫ ТЕЛА</div>
@@ -212,12 +216,25 @@ export default function ResultPage() {
         })()}
 
         <div className="mt-14">
-          <div className="mono text-xs text-accent-primary/80">ТОП-3 УСКОРИТЕЛЯ У ВАС</div>
-          <h2 className="display text-3xl md:text-4xl mt-2">
-            Что именно «стоит» в годах здоровой жизни
-          </h2>
+          {(() => {
+            const isOptimizing = score.longyScoreBand === "excellent" || score.longyScoreBand === "good";
+            return (
+              <>
+                <div className="mono text-xs text-accent-primary/80">
+                  {isOptimizing ? "МАРЖИНАЛЬНЫЙ ПОТЕНЦИАЛ" : "ТОП-3 УСКОРИТЕЛЯ У ВАС"}
+                </div>
+                <h2 className="display text-3xl md:text-4xl mt-2">
+                  {isOptimizing
+                    ? "Где есть потенциал для роста"
+                    : "Что именно «стоит» в годах здоровой жизни"}
+                </h2>
+              </>
+            );
+          })()}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {accelerators.length === 0 ? (
+            {(() => {
+              const isOptimizing = score.longyScoreBand === "excellent" || score.longyScoreBand === "good";
+              return accelerators.length === 0 ? (
               <div className="card p-8 md:col-span-3">
                 <p className="text-white/70">
                   Ни один из факторов не превышает порога риска — отличная отправная точка.
@@ -246,7 +263,7 @@ export default function ResultPage() {
                     {score.domains[acc.key].label.toUpperCase()}
                   </div>
                   <h3 className="display text-2xl mt-2 leading-[1.1]">{acc.headline}</h3>
-                  <div className="mt-3 mono text-sm text-accent-warm">{acc.yearsLostEstimate}</div>
+                  <div className={`mt-3 mono text-sm ${isOptimizing ? "text-accent-primary" : "text-accent-warm"}`}>{acc.yearsLostEstimate}</div>
                   <p className="mt-4 text-white/65 text-sm leading-relaxed">{acc.detail}</p>
                   <div className="mt-5 rounded-2xl border border-accent-primary/25 bg-accent-primary/5 p-4">
                     <div className="mono text-xs text-accent-primary">ЧТО ДЕЛАТЬ</div>
@@ -255,7 +272,8 @@ export default function ResultPage() {
                   <p className="mt-4 text-white/35 text-xs italic">{acc.evidence}</p>
                 </div>
               ))
-            )}
+            );
+            })()}
           </div>
         </div>
 

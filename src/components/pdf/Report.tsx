@@ -236,7 +236,7 @@ export const Report: React.FC<ReportProps> = ({
         <CoverPage score={score} answers={answers} />
         <VerdictPage score={score} answers={answers} />
         <AcceleratorsPage accelerators={accelerators} score={score} />
-        {tone !== "optimize" && <ProjectionPage score={score} />}
+        {(tone !== "optimize" || score.isGainBranch) && <ProjectionPage score={score} />}
         <RadarPage score={score} protectors={protectors} />
         <LongyPage answers={answers} />
         <FinalPage name={name} score={score} answers={answers} />
@@ -624,6 +624,29 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
 
         {isOptimize
           ? (() => {
+              if (score.isGainBranch) {
+                const topGain = [...score.gainPotentialWaterfall].sort(
+                  (a, b) => b.yearsLost - a.yearsLost,
+                )[0];
+                return (
+                  <View style={[styles.card, { flex: 1 }]}>
+                    <Text style={styles.mono}>Главная точка роста</Text>
+                    <Text
+                      style={[
+                        styles.display,
+                        { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.2 },
+                      ]}
+                    >
+                      {topGain?.label ?? "—"}
+                    </Text>
+                    <Text
+                      style={{ color: PALETTE.accent, marginTop: 8, fontSize: FS.body }}
+                    >
+                      +{(topGain?.yearsLost ?? 0).toFixed(1)} лет потенциал
+                    </Text>
+                  </View>
+                );
+              }
               const best = strongestDomain(score);
               return (
                 <View style={[styles.card, { flex: 1 }]}>
@@ -644,21 +667,19 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
             })()
           : (() => {
               const md = pickMainDriver(answers, score);
-              const driverLabel = score.isGainBranch ? "Главная точка роста" : T.cover.mainDriver;
               if (!md) {
                 return (
                   <View style={[styles.card, { flex: 1 }]}>
-                    <Text style={styles.mono}>{driverLabel}</Text>
+                    <Text style={styles.mono}>{T.cover.mainDriver}</Text>
                     <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.15 }]}>
                       {T.cover.mainDriverEmpty}
                     </Text>
                   </View>
                 );
               }
-              const gainYears = score.gainPotentialWaterfall.find((w) => w.key === md.domain.key)?.yearsLost ?? 0;
               return (
                 <View style={[styles.card, { flex: 1 }]}>
-                  <Text style={styles.mono}>{driverLabel}</Text>
+                  <Text style={styles.mono}>{T.cover.mainDriver}</Text>
                   <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.2 }]}>
                     {md.headline}
                   </Text>
@@ -666,15 +687,9 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
                     {md.subtext}
                   </Text>
                   <Text
-                    style={{
-                      color: score.isGainBranch ? PALETTE.accent : PALETTE.warm,
-                      marginTop: 8,
-                      fontSize: FS.body,
-                    }}
+                    style={{ color: PALETTE.warm, marginTop: 8, fontSize: FS.body }}
                   >
-                    {score.isGainBranch
-                      ? `+${gainYears.toFixed(1)} лет потенциал`
-                      : T.cover.yearsOfLife(md.domain.yearsLifeLost.toFixed(1))}
+                    {T.cover.yearsOfLife(md.domain.yearsLifeLost.toFixed(1))}
                   </Text>
                 </View>
               );
@@ -729,7 +744,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
   answers,
 }) => {
   const velocity = score.agingVelocityPct;
-  const isGain = score.yearsLifeLostTotal < 0.5;
+  const isGain = score.isGainBranch;
   const verdictText = isGain
     ? "Ниже — разбор по 5 факторам вашего образа жизни. Что уже работает на вас и где ещё есть запас для точечной настройки."
     : "Ниже — разбор по 5 факторам вашего образа жизни. Сколько лет здоровой жизни «стоит» каждый из них и что можно вернуть за 8 недель с Longy.";
@@ -799,11 +814,11 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
             const zone = velocityZoneKey(velocity);
             return (
               <>
-                <LegendPill color={PALETTE.calm} label="Ниже нормы" active={zone === "below"} />
+                <LegendPill color={PALETTE.calm} label="Лучше нормы" active={zone === "below"} />
                 <LegendPill color={PALETTE.accent} label="Норма" active={zone === "normal"} />
-                <LegendPill color={PALETTE.amber} label="Ускорение" active={zone === "acceleration"} />
-                <LegendPill color={PALETTE.warm} label="Риск" active={zone === "risk"} />
-                <LegendPill color={PALETTE.danger} label="Критично" active={zone === "critical"} />
+                <LegendPill color={PALETTE.amber} label="Ускоренное" active={zone === "acceleration"} />
+                <LegendPill color={PALETTE.warm} label="Высокий риск" active={zone === "risk"} />
+                <LegendPill color={PALETTE.danger} label="Критическое" active={zone === "critical"} />
               </>
             );
           })()}
@@ -1217,7 +1232,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
       </View>
 
       {/* Waterfall: gain — бонус по доменам; иначе loss или RealizedPotential */}
-      <View wrap={false} style={{ marginTop: 14 }}>
+      <View wrap={false} style={{ marginTop: isGain ? 8 : 14 }}>
         {isGain ? (
           <>
             <Text style={styles.mono}>
@@ -1228,7 +1243,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
                 items={score.gainPotentialWaterfall}
                 totalYears={score.gainPotentialYears}
                 width={515}
-                height={160}
+                height={120}
                 mode="gain"
               />
             </View>
@@ -1287,7 +1302,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
                 {formatBioAgeDelta(proj.yearsLifeLostNow - proj.yearsLifeLostTarget)}
               </Text>
               <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, lineHeight: 1.45 }}>
-                Longy Score вырастет с{" "}
+                Longy Health Score вырастет с{" "}
                 <Text style={{ color: PALETTE.textMuted }}>{proj.longyScoreNow}</Text>{" "}
                 до <Text style={{ color: PALETTE.accent }}>{proj.longyScoreTarget}</Text>.
                 Вот что конкретно Longy делает по трём главным рычагам:
@@ -1346,10 +1361,15 @@ const RealizedPotentialBlock: React.FC<{ score: ScoreResult }> = ({ score }) => 
     .sort((a, b) => b.score0to100 - a.score0to100)
     .slice(0, 3);
 
+  const monoLabel =
+    gap < 0.5
+      ? `Потерь здоровых лет по модели почти не видно — +${years.toFixed(1)} из ${max}`
+      : `Небольшой резерв здоровых лет — +${years.toFixed(1)} из ${max}, ещё +${gap.toFixed(1)} можно вернуть`;
+
   return (
     <View>
       <Text style={styles.mono}>
-        Потерь здоровых лет по модели почти не видно — +{years.toFixed(1)} из {max}
+        {monoLabel}
       </Text>
 
       <View
@@ -1446,7 +1466,7 @@ const MaintainProjectionBlock: React.FC<{ score: ScoreResult }> = ({ score }) =>
         { fontSize: FS.subhead, marginTop: 8, lineHeight: 1.25 },
       ]}
     >
-      Longy Score удержится около {score.longyScore} ± 3
+      Longy Health Score удержится около {score.longyScore} ± 3
     </Text>
     <Text
       style={{
@@ -1504,9 +1524,9 @@ const GainGrid: React.FC<{ score: ScoreResult }> = ({ score }) => {
   const items = score.gainPotentialWaterfall.filter((i) => i.yearsLost > 0);
 
   return (
-    <View wrap={false} style={{ marginTop: 24, gap: 8 }}>
+    <View style={{ marginTop: 12, gap: 8 }}>
       <Text style={styles.mono}>Что Longy добавляет сверху · по каждому домену</Text>
-      <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      <View style={{ marginTop: 6, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
         {items.map((it) => {
           const desc = GAIN_DESCRIPTIONS[it.key as DomainKey];
           return (
@@ -1514,8 +1534,8 @@ const GainGrid: React.FC<{ score: ScoreResult }> = ({ score }) => {
               key={it.key}
               style={{
                 width: "48%",
-                borderRadius: 14,
-                padding: 12,
+                borderRadius: 12,
+                padding: 9,
                 backgroundColor: "#FEF8F4",
                 borderWidth: 1,
                 borderColor: PALETTE.accent,
@@ -2110,7 +2130,7 @@ const RoadmapRow = ({ num, text }: { num: string; text: string }) => (
 
 const DomainRow = ({ domain }: { domain: DomainScore }) => {
   const color = domainColor(domain);
-  const width = Math.max(4, (domain.score0to100 / 100) * 200);
+  const widthPct = `${Math.max(2, Math.min(100, domain.score0to100))}%`;
   return (
     <View style={{ gap: 4 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -2128,9 +2148,10 @@ const DomainRow = ({ domain }: { domain: DomainScore }) => {
           borderRadius: 3,
           backgroundColor: "#EBEBEB",
           overflow: "hidden",
+          width: "100%",
         }}
       >
-        <View style={{ width, height: 5, backgroundColor: color, borderRadius: 3 }} />
+        <View style={{ width: widthPct, height: 5, backgroundColor: color, borderRadius: 3 }} />
       </View>
     </View>
   );
