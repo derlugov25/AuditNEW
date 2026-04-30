@@ -7,7 +7,8 @@ import { calculateScore } from "@/lib/scoring";
 import {
   buildAccelerators,
   buildProtectors,
-  LONGY_FEATURES,
+  getLongyFeatures,
+  LongyFeature,
   acceleratorColor,
   goalLabel,
   longyScoreLabel,
@@ -132,7 +133,7 @@ export default function ResultPage() {
               </span>
             ) : null}
             <span className="block text-4xl md:text-6xl font-bold text-white font-sans tracking-normal leading-snug whitespace-pre-line mt-1">
-              {lifeYearsHeadline(score)}
+              {lifeYearsHeadline(score, answers)}
             </span>
           </h1>
           <p className="text-white/45 text-sm md:text-base mt-3 max-w-2xl leading-relaxed">
@@ -156,7 +157,7 @@ export default function ResultPage() {
                 <div className="text-white/40 text-xl">/ 100</div>
               </div>
               <p className="mt-4 text-white/70 leading-relaxed">
-                {longyScoreLabel(score.longyScoreBand).label}. Ниже — три личных драйвера и
+                {longyScoreLabel(score.longyScoreBand).label}. Ниже - три личных драйвера и
                 что с ними делать.
               </p>
             </div>
@@ -167,7 +168,7 @@ export default function ResultPage() {
               {score.isGainBranch ? "ГЛАВНАЯ ТОЧКА РОСТА" : "ГЛАВНЫЙ ДРАЙВЕР"}
             </div>
             <div className="display text-2xl mt-3 leading-tight">
-              {score.topThree[0]?.label ?? "—"}
+              {score.topThree[0]?.label ?? "-"}
             </div>
             <div className={`mt-2 mono text-sm ${score.isGainBranch ? "text-accent-primary" : "text-accent-warm"}`}>
               {score.isGainBranch
@@ -176,7 +177,7 @@ export default function ResultPage() {
             </div>
             <div className="mt-6 pt-6 border-t border-white/10">
               <div className="mono text-xs text-white/50">ИНДЕКС МАССЫ ТЕЛА</div>
-              <div className="display text-3xl mt-1">{score.bmi ?? "—"}</div>
+              <div className="display text-3xl mt-1">{score.bmi ?? "-"}</div>
               <div className="text-white/50 text-sm mt-1">{bmiLabel(score.bmiCategory)}</div>
             </div>
           </div>
@@ -237,7 +238,7 @@ export default function ResultPage() {
               return accelerators.length === 0 ? (
               <div className="card p-8 md:col-span-3">
                 <p className="text-white/70">
-                  Ни один из факторов не превышает порога риска — отличная отправная точка.
+                  Ни один из факторов не превышает порога риска - отличная отправная точка.
                 </p>
               </div>
             ) : (
@@ -291,7 +292,7 @@ export default function ResultPage() {
             <h3 className="display text-2xl mt-2">Ваши сильные стороны</h3>
             {protectors.length === 0 ? (
               <p className="mt-4 text-white/60 leading-relaxed">
-                Сейчас нет доменов с уверенно защитным уровнем. Это не приговор — это просто
+                Сейчас нет доменов с уверенно защитным уровнем. Это не приговор - это просто
                 стартовая точка. Через 8 недель работы с Longy картина меняется у 86% пользователей.
               </p>
             ) : (
@@ -315,7 +316,7 @@ export default function ResultPage() {
           <div className="mono text-xs text-accent-primary/80">КАК LONGY БЕРЁТ ЭТО НА СЕБЯ</div>
           <h2 className="display text-3xl md:text-4xl mt-2">Три вещи, которых нет больше нигде</h2>
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {LONGY_FEATURES.map((f, i) => (
+            {getLongyFeatures().map((f: LongyFeature, i: number) => (
               <div key={f.title} className="card p-7 flex flex-col">
                 <div className="mono text-xs text-white/50">0{i + 1}</div>
                 <h3 className="display text-2xl mt-4">{f.title}</h3>
@@ -350,7 +351,7 @@ export default function ResultPage() {
               <h3 className="display text-2xl md:text-3xl">
                 Получить глубокий аудит в приложении
               </h3>
-              <p className="text-white/60 mt-2 max-w-xl">{coverCTA(score)}</p>
+              <p className="text-white/60 mt-2 max-w-xl">{coverCTA(score, answers)}</p>
             </div>
             <a
               href="https://longy.health/app"
@@ -387,6 +388,6 @@ function bmiLabel(c: string): string {
     case "obese":
       return "Ожирение";
     default:
-      return "—";
+      return "-";
   }
 }

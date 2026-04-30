@@ -1,4 +1,5 @@
 import { Answers } from "./types";
+import { tr } from "./i18n";
 
 export type DomainKey = "stress" | "sleep" | "movement" | "nutrition" | "habits";
 
@@ -60,7 +61,7 @@ export interface ScoreResult {
   isGainBranch: boolean;
 }
 
-// Li et al., J Intern Med 2024 — 5 доменов (social удалён), сумма 12 лет сохранена
+// Li et al., J Intern Med 2024 - 5 доменов (social удалён), сумма 12 лет сохранена
 const HEALTHSPAN_MAX_YEARS: Record<DomainKey, number> = {
   habits: 3.5,
   sleep: 3.0,
@@ -131,7 +132,7 @@ const stressDomain = (a: Answers): DomainScore => {
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "stress",
-    label: "Ментальная устойчивость и фокус",
+    label: tr("Ментальная устойчивость и фокус", "Mental resilience & focus"),
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -217,7 +218,7 @@ const sleepDomain = (a: Answers): DomainScore => {
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "sleep",
-    label: "Качество сна и режим",
+    label: tr("Качество сна и режим", "Sleep quality & schedule"),
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -263,7 +264,7 @@ const movementDomain = (a: Answers): DomainScore => {
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "movement",
-    label: "Движение и функциональная форма",
+    label: tr("Движение и функциональная форма", "Movement & functional fitness"),
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -296,7 +297,7 @@ const nutritionDomain = (a: Answers): DomainScore => {
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "nutrition",
-    label: "Питание и гидратация",
+    label: tr("Питание и гидратация", "Nutrition & hydration"),
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -324,7 +325,7 @@ const habitsDomain = (a: Answers): DomainScore => {
   const score = Math.max(0, 100 - raw * 2);
   return {
     key: "habits",
-    label: "Алкоголь и никотин",
+    label: tr("Алкоголь и никотин", "Alcohol & nicotine"),
     score0to100: Math.round(score),
     velocityContribution: 0,
     yearsLifeLost: 0,
@@ -387,7 +388,7 @@ const bmiAnalysis = (a: Answers) => {
 
 // Максимальный гипотетический бонус (в годах) сверх 12-летнего healthspan,
 // который Longy может дать через precision-инструменты по каждому домену.
-// Сумма = 5 лет — это потолок «можно добрать».
+// Сумма = 5 лет - это потолок «можно добрать».
 const GAIN_MAX_PER_DOMAIN: Record<DomainKey, number> = {
   sleep: 1.5,
   movement: 1.2,
@@ -466,12 +467,12 @@ export function calculateScore(a: Answers): ScoreResult {
   if (bmi.velocityMod > 0) {
     const bmiDelta = Math.round(bmi.velocityMod * 10) / 10;
     const insertIdx = wfBase.findIndex((item) => item.delta < bmiDelta);
-    const bmiRow: WfBaseRow = { key: "bmi", label: "Индекс массы тела / талия", delta: bmiDelta };
+    const bmiRow: WfBaseRow = { key: "bmi", label: tr("Индекс массы тела / талия", "BMI / waist"), delta: bmiDelta };
     if (insertIdx === -1) wfBase.push(bmiRow);
     else wfBase.splice(insertIdx, 0, bmiRow);
   }
 
-  // Вариант A: «годы здоровой жизни» — одна модель на всех экранах.
+  // Вариант A: «годы здоровой жизни» - одна модель на всех экранах.
   // Сколько вы сейчас реализуете из потенциала Li et al. (12 лет).
   const healthspanYearsRaw = Object.values(domains).reduce(
     (sum, d) => sum + (d.score0to100 / 100) * HEALTHSPAN_MAX_YEARS[d.key],
@@ -546,22 +547,31 @@ export function calculateScore(a: Answers): ScoreResult {
 
   const healthspanYears = Math.round(healthspanYearsRaw * 10) / 10;
 
-  const TARGET_SCORE = 75;
-  const projectionTargets = topThree.filter((d) => d.score0to100 < TARGET_SCORE);
+  // Каждому из топ-3 доменов проекция тянет балл вверх:
+  // минимум до TARGET_FLOOR, и не меньше чем +TARGET_BUMP к текущему,
+  // но не выше TARGET_CAP (избегаем «100/100»).
+  const TARGET_FLOOR = 75;
+  const TARGET_BUMP = 10;
+  const TARGET_CAP = 95;
+  const targetScoreFor = (d: DomainScore): number =>
+    Math.min(TARGET_CAP, Math.max(TARGET_FLOOR, d.score0to100 + TARGET_BUMP));
+  // В проекции участвуют все top-3, кроме уже почти идеальных (≥ 95).
+  const projectionTargets = topThree.filter((d) => d.score0to100 < TARGET_CAP);
   let velocitySaved = 0;
   projectionTargets.forEach((d) => {
-    const newContrib = (1 - TARGET_SCORE / 100) * maxContribMap[d.key];
+    const target = targetScoreFor(d);
+    const newContrib = (1 - target / 100) * maxContribMap[d.key];
     velocitySaved += Math.max(0, d.velocityContribution - newContrib);
   });
   const velocityTarget = Math.max(-5, Math.min(40, agingVelocityPct - velocitySaved));
   const longyScoreTarget = Math.max(1, Math.min(100, Math.round(100 - velocityTarget * 2)));
   // yearsLifeLostTarget считаем той же healthspan-моделью: подтягиваем
-  // targets-домены до TARGET_SCORE и пересобираем сумму.
-  const targetKeys = new Set(projectionTargets.map((d) => d.key));
+  // targets-домены до их персонального target и пересобираем сумму.
+  const targetByKey = new Map(projectionTargets.map((d) => [d.key, targetScoreFor(d)]));
   const healthspanYearsTargetRaw = allDomains.reduce((sum, d) => {
-    const effectiveScore = targetKeys.has(d.key)
-      ? Math.max(d.score0to100, TARGET_SCORE)
-      : d.score0to100;
+    const target = targetByKey.get(d.key);
+    const effectiveScore =
+      target !== undefined ? Math.max(d.score0to100, target) : d.score0to100;
     return sum + (effectiveScore / 100) * HEALTHSPAN_MAX_YEARS[d.key];
   }, 0);
   const yearsLifeLostTarget = Math.max(

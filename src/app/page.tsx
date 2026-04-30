@@ -32,7 +32,7 @@ export default function LandingPage() {
 
           <p className="max-w-2xl text-white/70 text-lg md:text-xl leading-relaxed">
             ~5 минут. Персональный PDF-отчёт с разбором трёх ваших самых сильных
-            ускорителей старения — с учётом ваших хронических заболеваний и барьеров,
+            ускорителей старения - с учётом ваших хронических заболеваний и барьеров,
             и конкретным планом, как их развернуть.
           </p>
 
@@ -57,7 +57,7 @@ export default function LandingPage() {
           <FeatureCard
             number="01"
             title="Потеря здоровых лет"
-            body="Главный тезис отчёта: сколько лет здоровой жизни «стоит» ваш текущий образ жизни — по модели Li et al., 2024"
+            body="Главный тезис отчёта: сколько лет здоровой жизни «стоит» ваш текущий образ жизни - по модели Li et al., 2024"
           />
           <FeatureCard
             number="02"
@@ -73,7 +73,7 @@ export default function LandingPage() {
 
         <div className="mt-16 border-t border-white/5 pt-10 flex flex-col md:flex-row gap-8 md:items-center md:justify-between">
           <p className="text-white/50 max-w-xl leading-relaxed">
-            Longy работает с данными Whoop, Oura, Apple Watch, Garmin и умных весов. Внутри —
+            Longy работает с данными Whoop, Oura, Apple Watch, Garmin и умных весов. Внутри -
             AI-нутрициолог, AI-коуч, AI-терапевт и health manager, которые видят полную картину.
           </p>
           <div className="flex flex-wrap gap-2">

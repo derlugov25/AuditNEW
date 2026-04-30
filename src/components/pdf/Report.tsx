@@ -20,7 +20,7 @@ import {
   AcceleratorInsight,
   ProtectorInsight,
   MaintenanceTip,
-  LONGY_FEATURES,
+  getLongyFeatures,
   goalLabel,
   longyScoreLabel,
   goalDomainHeadline,
@@ -33,15 +33,17 @@ import {
   pickRightCardMetric,
   pickMainDriver,
   longyForGoalBlock,
-  EIGHT_WEEK_PROMISE,
+  pickEightWeekPromise,
   formatBioAgeDelta,
   reportTone,
   longyScorePercentileTop,
   strongestDomain,
   ReportTone,
+  pickFourLifeHacks,
+  LifeHack,
 } from "@/lib/insights";
 import { Answers } from "@/lib/types";
-import { T, formatReportDate, formatAge } from "@/lib/i18n";
+import { T, formatReportDate, formatAge, tr } from "@/lib/i18n";
 
 const ReportDateContext = React.createContext<string>("");
 
@@ -88,7 +90,7 @@ const PALETTE = {
   good: "#1F7A3A",
 };
 
-// Type scale — 8 tiers, modular ratio ~1.2–1.33.
+// Type scale - 8 tiers, modular ratio ~1.2-1.33.
 // Usage: caption (meta/legends) · body (paragraphs) · label (card titles / bold body)
 // · subhead (section sub-titles) · headline (page titles) · display (big numbers)
 // · displayLg (cover scores) · hero (hero-cover only).
@@ -151,18 +153,18 @@ const styles = StyleSheet.create({
   },
   verdictTitle: {
     fontFamily: "Geist",
-    fontWeight: 700,
-    fontSize: FS.display,
+    fontWeight: 600,
+    fontSize: 26,
     lineHeight: 1.25,
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
     color: PALETTE.text,
   },
   verdictTitleFigures: {
     fontFamily: "Geist",
-    fontWeight: 700,
-    fontSize: FS.display,
+    fontWeight: 600,
+    fontSize: 26,
     lineHeight: 1.2,
-    letterSpacing: -0.8,
+    letterSpacing: -0.7,
     color: PALETTE.text,
   },
   numStat: {
@@ -174,14 +176,19 @@ const styles = StyleSheet.create({
   },
   chip: {
     alignSelf: "flex-start",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingTop: 5,
+    paddingBottom: 3,
+    paddingHorizontal: 12,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: PALETTE.border,
+  },
+  chipText: {
     color: PALETTE.textMuted,
     fontSize: FS.caption,
+    lineHeight: 1,
     letterSpacing: 0.5,
+    textAlign: "center",
   },
   card: {
     borderWidth: 1,
@@ -236,8 +243,9 @@ export const Report: React.FC<ReportProps> = ({
         <CoverPage score={score} answers={answers} />
         <VerdictPage score={score} answers={answers} />
         <AcceleratorsPage accelerators={accelerators} score={score} />
-        {(tone !== "optimize" || score.isGainBranch) && <ProjectionPage score={score} />}
+        {(tone !== "optimize" || score.isGainBranch) && <ProjectionPage score={score} answers={answers} />}
         <RadarPage score={score} protectors={protectors} />
+        <LifeHacksPage score={score} answers={answers} />
         <LongyPage answers={answers} />
         <FinalPage name={name} score={score} answers={answers} />
         <MethodologyPage />
@@ -524,9 +532,11 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
     <Page size="A4" style={styles.page}>
       <Header ordinal="02" label={T.cover.ordinal} />
       <View wrap={false} style={{ marginTop: 20, gap: 16 }}>
-        <Text style={styles.chip}>
-          {isOptimize ? T.cover.chipOptimize : T.cover.chip}
-        </Text>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>
+            {isOptimize ? T.cover.chipOptimize : T.cover.chip}
+          </Text>
+        </View>
         <Text style={[styles.display, { fontSize: FS.displayLg, lineHeight: 1.08, letterSpacing: 0 }]}>
           {isOptimize ? (
             <>
@@ -561,7 +571,7 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
         </Text>
       </View>
 
-      {/* Celebration percentile card — only for optimize tone */}
+      {/* Celebration percentile card - only for optimize tone */}
       {isOptimize && (
         <View
           wrap={false}
@@ -630,19 +640,19 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
                 )[0];
                 return (
                   <View style={[styles.card, { flex: 1 }]}>
-                    <Text style={styles.mono}>Главная точка роста</Text>
+                    <Text style={styles.mono}>{tr("Главная точка роста", "Main growth lever")}</Text>
                     <Text
                       style={[
                         styles.display,
                         { fontSize: FS.subhead, marginTop: 10, lineHeight: 1.2 },
                       ]}
                     >
-                      {topGain?.label ?? "—"}
+                      {topGain?.label ?? "-"}
                     </Text>
                     <Text
                       style={{ color: PALETTE.accent, marginTop: 8, fontSize: FS.body }}
                     >
-                      +{(topGain?.yearsLost ?? 0).toFixed(1)} лет потенциал
+                      +{(topGain?.yearsLost ?? 0).toFixed(1)} {tr("лет потенциал", "years potential")}
                     </Text>
                   </View>
                 );
@@ -746,28 +756,36 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
   const velocity = score.agingVelocityPct;
   const isGain = score.isGainBranch;
   const verdictText = isGain
-    ? "Ниже — разбор по 5 факторам вашего образа жизни. Что уже работает на вас и где ещё есть запас для точечной настройки."
-    : "Ниже — разбор по 5 факторам вашего образа жизни. Сколько лет здоровой жизни «стоит» каждый из них и что можно вернуть за 8 недель с Longy.";
+    ? tr(
+        "Ниже - разбор по 5 факторам вашего образа жизни. Что уже работает на вас и где ещё есть запас для точечной настройки.",
+        "Below is a breakdown across 5 lifestyle factors: what already works for you and where targeted upside remains.",
+      )
+    : tr(
+        "Ниже - разбор по 5 факторам вашего образа жизни. Сколько лет здоровой жизни «стоит» каждый из них и что можно вернуть с Longy",
+        "Below is a breakdown across 5 lifestyle factors: how many healthy years each one currently costs and what can be recovered in 8 weeks with Longy.",
+      );
 
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="03" label="Главный вывод" />
+      <Header ordinal="03" label={tr("Главный вывод", "Main takeaway")} />
       <View wrap={false} style={{ gap: 12 }}>
-        <Text style={styles.chip}>Вердикт</Text>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>{tr("Вердикт", "Verdict")}</Text>
+        </View>
         {(() => {
-          const lines = verdictLifeYearsHeadlineLines(score);
+          const lines = verdictLifeYearsHeadlineLines(score, answers);
           if (!lines) {
             return (
               <Text style={styles.verdictTitle}>
-                Потерь здоровых лет по этой модели почти не видно
+                {tr("Потерь здоровых лет по этой модели почти не видно", "Almost no healthy-life loss is visible in this model")}
               </Text>
             );
           }
           return (
             <View style={{ gap: 8 }}>
-              <Text style={styles.verdictTitle}>{lines[0]}</Text>
-              <Text style={styles.verdictTitleFigures}>{lines[1]}</Text>
-              <Text style={styles.verdictTitle}>{lines[2]}</Text>
+              {lines[0] ? <Text style={styles.verdictTitle}>{lines[0]}</Text> : null}
+              {lines[1] ? <Text style={styles.verdictTitleFigures}>{lines[1]}</Text> : null}
+              {lines[2] ? <Text style={styles.verdictTitle}>{lines[2]}</Text> : null}
             </View>
           );
         })()}
@@ -783,7 +801,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
       <View wrap={false} style={{ marginTop: 12 }}>
         <View style={{ alignItems: "center", gap: 4 }}>
           <Text style={[styles.mono, { textAlign: "center" }]}>
-            Где вы сейчас находитесь по вашей скорости старения
+            {tr("Где вы сейчас находитесь по вашей скорости старения", "Where you currently stand by aging speed")}
           </Text>
           <SpeedometerSvg velocity={velocity} width={220} />
           <Text
@@ -814,11 +832,11 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
             const zone = velocityZoneKey(velocity);
             return (
               <>
-                <LegendPill color={PALETTE.calm} label="Лучше нормы" active={zone === "below"} />
-                <LegendPill color={PALETTE.accent} label="Норма" active={zone === "normal"} />
-                <LegendPill color={PALETTE.amber} label="Ускоренное" active={zone === "acceleration"} />
-                <LegendPill color={PALETTE.warm} label="Высокий риск" active={zone === "risk"} />
-                <LegendPill color={PALETTE.danger} label="Критическое" active={zone === "critical"} />
+                <LegendPill color={PALETTE.calm} label={tr("Лучше нормы", "Below norm")} active={zone === "below"} />
+                <LegendPill color={PALETTE.accent} label={tr("Норма", "Normal")} active={zone === "normal"} />
+                <LegendPill color={PALETTE.amber} label={tr("Ускоренное", "Accelerated")} active={zone === "acceleration"} />
+                <LegendPill color={PALETTE.warm} label={tr("Высокий риск", "High risk")} active={zone === "risk"} />
+                <LegendPill color={PALETTE.danger} label={tr("Критическое", "Critical")} active={zone === "critical"} />
               </>
             );
           })()}
@@ -827,17 +845,17 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
 
       <View wrap={false} style={{ marginTop: 24, flexDirection: "row", gap: 10 }}>
         <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>Ваша цель</Text>
+          <Text style={styles.mono}>{tr("Ваша цель", "Your goal")}</Text>
           <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
             {goalLabel(answers.goal)}
           </Text>
         </View>
         <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>Трекеры</Text>
+          <Text style={styles.mono}>{tr("Трекеры", "Trackers")}</Text>
           <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
             {answers.trackers && answers.trackers.length > 0
               ? answers.trackers.map(trackerLabel).join(", ")
-              : "Пока не используете"}
+              : tr("Пока не используете", "Not using yet")}
           </Text>
         </View>
       </View>
@@ -894,7 +912,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
               return (
                 <View style={{ marginTop: 12, gap: 6 }}>
                   <Text style={[styles.mono, { color: PALETTE.accent }]}>
-                    Что Longy делает под вашу цель
+                    {tr("Что Longy делает под вашу цель", "How Longy supports your goal")}
                   </Text>
                   {lg.bullets.map((b, i) => (
                     <View key={i} style={{ flexDirection: "row", gap: 6 }}>
@@ -981,8 +999,14 @@ const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
     gap >= 5 ? PALETTE.danger : gap >= 3 ? PALETTE.warm : gap >= 1.5 ? PALETTE.amber : PALETTE.accent;
   const narrative =
     gap < 1
-      ? `Ваш образ жизни уже реализует почти весь потенциал — +${years.toFixed(1)} из возможных +${max} здоровых лет.* Отчёт подсвечивает точки, где можно дожать остаток.`
-      : `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас вы набираете +${years.toFixed(1)} — ещё +${gap} остаются в запасе и возвращаются привычками.`;
+      ? tr(
+          `Ваш образ жизни уже даёт почти максимум - +${years.toFixed(1)} из возможных +${max} здоровых лет.* Отчёт показывает, где можно добрать остальное.`,
+          `Your lifestyle already realizes most of its potential: +${years.toFixed(1)} out of +${max} healthy years.* This report highlights where to capture the remaining upside.`,
+        )
+      : tr(
+          `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас у вас +${years.toFixed(1)} - ещё +${gap} можно добрать.`,
+          `An ideal lifestyle across 5 factors can add up to +${max} healthy years.* You currently realize +${years.toFixed(1)} - about +${gap} remain in reserve.`,
+        );
 
   return (
     <View style={healthspanStripStyle}>
@@ -992,10 +1016,10 @@ const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
           <Text style={[styles.numStat, { fontSize: FS.display, color: gapColor }]}>
             +{gap.toFixed(1)}
           </Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>лет возможно получить</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>{tr("лет возможно получить", "years can be gained")}</Text>
         </View>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, marginTop: 4 }}>
-          сейчас у вас +{years.toFixed(1)} из максимальных +{max}
+          {tr("сейчас у вас", "you currently have")} +{years.toFixed(1)} {tr("из максимальных", "out of max")} +{max}
         </Text>
       </View>
 
@@ -1026,23 +1050,24 @@ const HealthspanStripGain: React.FC<{ score: ScoreResult }> = ({ score }) => {
   return (
     <View style={healthspanStripStyle}>
       <View style={{ minWidth: 140 }}>
-        <Text style={styles.mono}>Дополнительный потенциал</Text>
+        <Text style={styles.mono}>{tr("Дополнительный потенциал", "Additional upside")}</Text>
         <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginTop: 6 }}>
           <Text style={[styles.numStat, { fontSize: FS.display, color: PALETTE.accent }]}>
             +{gain}
           </Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>лет можно добрать</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>{tr("лет можно добрать", "years can be added")}</Text>
         </View>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, marginTop: 4 }}>
-          сверх 12-летнего healthspan Li et al.
+          {tr("сверх 12-летнего healthspan Li et al.", "above the +12-year Li et al. healthspan model")}
         </Text>
       </View>
 
       <View style={{ flex: 1 }}>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
-          Ваш образ жизни уже работает на вас — 12 лет healthspan по Li et al. в кармане.* Дальше Longy
-          подключает данные с устройств, нутригенетику и маркеры воспаления, чтобы добрать ещё ~{gain} лет
-          через precision-настройку.
+          {tr(
+            `Ваш образ жизни уже работает на вас - 12 лет healthspan по Li et al. в кармане.* Дальше Longy подключает данные с устройств, нутригенетику и маркеры воспаления, чтобы добрать ещё ~${gain} лет через precision-настройку.`,
+            `Your lifestyle baseline is already working in your favor. The +12-year Li et al. healthspan model is largely realized.* Next, Longy uses wearable data, nutrigenetics, and inflammation markers to unlock about ~${gain} more years through precision tuning.`,
+          )}
         </Text>
         <View style={progressBarOuter}>
           <View
@@ -1067,20 +1092,31 @@ const AcceleratorsPage: React.FC<{
 
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="04" label={isOptimizing ? "Тонкая настройка" : "Топ-3 ускорителя"} />
+      <Header
+        ordinal="04"
+        label={isOptimizing ? tr("Тонкая настройка", "Fine tuning") : tr("Топ-3 ускорителя", "Top-3 accelerators")}
+      />
       <View wrap={false} style={{ gap: 12 }}>
-        <Text style={styles.chip}>
-          {isOptimizing ? "Маржинальный потенциал" : "Ваши личные драйверы"}
-        </Text>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>
+            {isOptimizing ? tr("Потенциал для улучшения", "Marginal upside") : tr("Ваши личные драйверы", "Your personal drivers")}
+          </Text>
+        </View>
         <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
           {isOptimizing
-            ? "Где есть потенциал для роста"
-            : "Что именно «стоит» в годах здоровой жизни"}
+            ? tr("Где есть потенциал для роста", "Where growth potential remains")
+            : tr("Что съедает ваши годы здоровой жизни", "What's eating your healthy-life years")}
         </Text>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.body }}>
           {isOptimizing
-            ? "У вас крепкая база. Ниже — три домена с наибольшим маржинальным потенциалом. Каждый шаг небольшой, но они усиливают друг друга."
-            : "Отсортировано по влиянию на потерю здоровых лет. Работайте сверху вниз — первый даст самый быстрый эффект."}
+            ? tr(
+                "У вас крепкая база. Ниже - три домена с самым большим потенциалом для роста. Каждый шаг небольшой, но они усиливают друг друга.",
+                "You already have a strong baseline. Below are the three domains with the highest marginal upside. Each step is small, but together they compound.",
+              )
+            : tr(
+                "Отсортировано по влиянию на потерю здоровых лет. Работайте сверху вниз - первый блок даст самый быстрый эффект.",
+                "Sorted by impact on healthy-life loss. Work top-down - the first item gives the fastest return.",
+              )}
         </Text>
       </View>
 
@@ -1090,7 +1126,7 @@ const AcceleratorsPage: React.FC<{
           const dotColor = isOptimizing ? PALETTE.calm : colorFor(dom.velocityContribution);
           const actionBorderColor = isOptimizing ? PALETTE.calm : PALETTE.accent;
           const actionBg = isOptimizing ? "#EBF8F1" : "#FEF0EB";
-          const actionLabel = isOptimizing ? "Как усилить" : "Что делать";
+          const actionLabel = isOptimizing ? tr("Как усилить", "How to amplify") : tr("Что делать", "What to do");
           return (
             <View
               wrap={false}
@@ -1179,7 +1215,7 @@ const AcceleratorsPage: React.FC<{
   );
 };
 
-const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
+const ProjectionPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, answers }) => {
   const proj = score.projection;
   const hasLeverage = proj.deltaScore > 0;
   const tone = reportTone(score);
@@ -1192,28 +1228,39 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
   let subhead: string | null;
   let headerLabel: string;
   if (isGain) {
-    chipLabel = "Дополнительный потенциал";
-    headline = "Сколько лет можно добрать в каждом домене";
+    chipLabel = tr("Дополнительный потенциал", "Additional upside");
+    headline = tr("Сколько лет может дать каждый домен", "How many years can be gained in each domain");
     subhead =
-      "Все 5 доменов уже на сильной базе. Ниже — гипотетический бонус, который Longy даёт через precision-инструменты по каждому домену. Это не «починка», а тонкая настройка сверху.";
-    headerLabel = "Дополнительный потенциал";
+      tr(
+        "Все 5 доменов уже на сильной базе. Ниже - гипотетический бонус, который Longy даёт через точные инструменты по каждому домену. Это не починка, а тонкая настройка.",
+        "All 5 domains are already on a strong baseline. Below is the hypothetical bonus Longy can add through precision tools in each domain. This is not repair - it is top-layer optimization.",
+      );
+    headerLabel = tr("Дополнительный потенциал", "Additional upside");
   } else if (isOptimize) {
-    chipLabel = "Реализованный потенциал";
-    headline = "Сколько здоровых лет вы уже набираете";
-    subhead = `Healthspan-модель даёт до +${score.healthspanMax} лет за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)}.`;
-    headerLabel = "Реализованный потенциал";
+    chipLabel = tr("Реализованный потенциал", "Realized potential");
+    headline = tr("Сколько здоровых лет вы уже набираете", "How many healthy years you already realize");
+    subhead = tr(
+      `Healthspan-модель даёт до +${score.healthspanMax} лет за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)}.`,
+      `The Healthspan model gives up to +${score.healthspanMax} years for an ideal lifestyle. You are currently realizing +${score.healthspanYears.toFixed(1)}.`,
+    );
+    headerLabel = tr("Реализованный потенциал", "Realized potential");
   } else {
-    chipLabel = "Из чего складывается потеря лет";
-    headline = "Сколько здоровых лет «стоит» каждый домен — и что вернуть, если починить топ-3";
+    chipLabel = tr("Из чего складывается потеря лет", "Where year loss comes from");
+    headline = tr(
+      "Сколько здоровых лет отнимает каждый домен - и что можно точно вернуть",
+      "How many healthy years each domain costs - and what can be recovered",
+    );
     subhead = null;
-    headerLabel = "Цена и проекция";
+    headerLabel = tr("Стоимость и прогноз", "Cost and projection");
   }
 
   return (
     <Page size="A4" style={styles.page}>
       <Header ordinal="05" label={headerLabel} />
       <View wrap={false} style={{ gap: 8 }}>
-        <Text style={styles.chip}>{chipLabel}</Text>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>{chipLabel}</Text>
+        </View>
         <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.1 }]}>
           {headline}
         </Text>
@@ -1231,12 +1278,15 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
         )}
       </View>
 
-      {/* Waterfall: gain — бонус по доменам; иначе loss или RealizedPotential */}
+      {/* Waterfall: gain - бонус по доменам; иначе loss или RealizedPotential */}
       <View wrap={false} style={{ marginTop: isGain ? 8 : 14 }}>
         {isGain ? (
           <>
             <Text style={styles.mono}>
-              Потенциал · +{score.gainPotentialYears.toFixed(1)} лет можно добрать
+              {tr(
+                `Потенциал · +${score.gainPotentialYears.toFixed(1)} лет можно добрать`,
+                `Potential · +${score.gainPotentialYears.toFixed(1)} years can be gained`,
+              )}
             </Text>
             <View style={{ marginTop: 6 }}>
               <WaterfallSvg
@@ -1253,14 +1303,17 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
         ) : (
           <>
             <Text style={styles.mono}>
-              Waterfall · ≈{score.yearsLifeLostTotal.toFixed(1)} лет здоровой жизни
+              {tr(
+                `График-водопад · ≈${score.yearsLifeLostTotal.toFixed(1)} лет здоровой жизни`,
+                `Waterfall · ≈${score.yearsLifeLostTotal.toFixed(1)} healthy years`,
+              )}
             </Text>
             <View style={{ marginTop: 6 }}>
               <WaterfallSvg
                 items={score.velocityWaterfall}
                 totalYears={score.yearsLifeLostTotal}
                 width={515}
-                height={160}
+                height={135}
               />
             </View>
           </>
@@ -1280,28 +1333,30 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
         <View
           wrap={false}
           style={{
-            marginTop: 12,
-            borderRadius: 16,
-            padding: 14,
+            marginTop: 10,
+            borderRadius: 14,
+            padding: 10,
             backgroundColor: PALETTE.bgSoft,
             borderWidth: 1,
             borderColor: PALETTE.border,
           }}
         >
-          <Text style={styles.mono}>Если закрыть топ-3 · 8 недель с Longy</Text>
+          <Text style={styles.mono}>
+            {tr("Если улучшить топ-3 · 8 недель с Longy", "If you fix top-3 · 8 weeks with Longy")}
+          </Text>
 
-          <View style={{ marginTop: 8, flexDirection: "row", gap: 14, alignItems: "center" }}>
+          <View style={{ marginTop: 6, flexDirection: "row", gap: 12, alignItems: "center" }}>
             <ImpactPreviewSvg
               scoreNow={proj.longyScoreNow}
               scoreTarget={proj.longyScoreTarget}
-              width={180}
-              height={90}
+              width={240}
+              height={130}
             />
-            <View style={{ flex: 1, gap: 4 }}>
+            <View style={{ flex: 1, gap: 3 }}>
               <Text style={[styles.display, { fontSize: FS.subhead, lineHeight: 1.2 }]}>
                 {formatBioAgeDelta(proj.yearsLifeLostNow - proj.yearsLifeLostTarget)}
               </Text>
-              <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, lineHeight: 1.45 }}>
+              <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, lineHeight: 1.35 }}>
                 Longy Health Score вырастет с{" "}
                 <Text style={{ color: PALETTE.textMuted }}>{proj.longyScoreNow}</Text>{" "}
                 до <Text style={{ color: PALETTE.accent }}>{proj.longyScoreTarget}</Text>.
@@ -1310,11 +1365,11 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
             </View>
           </View>
 
-          <View style={{ marginTop: 10, gap: 6 }}>
+          <View style={{ marginTop: 8, flexDirection: "row", gap: 8 }}>
             {proj.targets.map((d) => {
-              const bullets = EIGHT_WEEK_PROMISE[d.key] ?? [];
+              const bullets = pickEightWeekPromise(d.key, score, answers);
               return (
-                <View key={d.key} style={{ gap: 2 }}>
+                <View key={d.key} style={{ flex: 1, gap: 2 }}>
                   <Text
                     style={{
                       color: PALETTE.accent,
@@ -1325,13 +1380,13 @@ const ProjectionPage: React.FC<{ score: ScoreResult }> = ({ score }) => {
                     {d.label}
                   </Text>
                   {bullets.map((b, i) => (
-                    <View key={i} style={{ flexDirection: "row", gap: 4, marginLeft: 4 }}>
+                    <View key={i} style={{ flexDirection: "row", gap: 3, marginLeft: 2 }}>
                       <Text style={{ color: PALETTE.accent, fontSize: FS.caption }}>·</Text>
                       <Text
                         style={{
                           color: PALETTE.text,
                           fontSize: FS.caption,
-                          lineHeight: 1.4,
+                          lineHeight: 1.3,
                           flex: 1,
                         }}
                       >
@@ -1363,8 +1418,8 @@ const RealizedPotentialBlock: React.FC<{ score: ScoreResult }> = ({ score }) => 
 
   const monoLabel =
     gap < 0.5
-      ? `Потерь здоровых лет по модели почти не видно — +${years.toFixed(1)} из ${max}`
-      : `Небольшой резерв здоровых лет — +${years.toFixed(1)} из ${max}, ещё +${gap.toFixed(1)} можно вернуть`;
+      ? `Потерь здоровых лет по модели почти не видно - +${years.toFixed(1)} из ${max}`
+      : `Небольшой резерв здоровых лет - +${years.toFixed(1)} из ${max}, ещё +${gap.toFixed(1)} можно вернуть`;
 
   return (
     <View>
@@ -1458,7 +1513,7 @@ const MaintainProjectionBlock: React.FC<{ score: ScoreResult }> = ({ score }) =>
     }}
   >
     <Text style={[styles.mono, { color: PALETTE.calm }]}>
-      Если сохраните режим — 12 месяцев вперёд
+      Если сохраните режим - 12 месяцев вперёд
     </Text>
     <Text
       style={[
@@ -1476,9 +1531,9 @@ const MaintainProjectionBlock: React.FC<{ score: ScoreResult }> = ({ score }) =>
         lineHeight: 1.55,
       }}
     >
-      На вашей базе основной риск — дрейф: стресс в проектах, смещение сна на
-      выходных, реже силовая тренировка в поездках. Longy ловит ранние сигналы
-      и возвращает к привычному режиму до того, как показатели упадут.
+      На вашей базе главный риск - постепенно съезжать. Стресс в проектах, сбитый
+      сон на выходных, пропущенные тренировки в командировках. Longy замечает
+      ранние сигналы и возвращает в режим до того, как показатели упадут.
     </Text>
     <View style={{ marginTop: 12, gap: 6 }}>
       <Text style={{ color: PALETTE.calm, fontSize: FS.body, fontWeight: 600 }}>
@@ -1509,15 +1564,15 @@ const MaintainProjectionBlock: React.FC<{ score: ScoreResult }> = ({ score }) =>
 
 const GAIN_DESCRIPTIONS: Record<DomainKey, string> = {
   sleep:
-    "Непрерывный анализ HRV, REM/глубоких фаз и циркадного chronotype. Подбор тонких сдвигов времени отбоя на основе ваших данных, а не общих рекомендаций.",
+    "Непрерывный анализ HRV, REM и глубоких фаз сна, вашего хронотипа. Подбираем тонкие сдвиги времени отбоя по вашим данным, а не общим рекомендациям.",
   movement:
-    "Периодизация по реальным данным восстановления. Анти-fragility подход: больше прогресса там, где организм готов, меньше — где ресурс на исходе.",
+    "План тренировок строится по вашим реальным данным восстановления. Прогресс там, где организм готов; отдых - там, где ресурс на исходе.",
   nutrition:
-    "Нутригенетика и маркеры воспаления. Точная настройка под ваш генотип и микробиом — то, что общими рекомендациями не закрыть.",
+    "Нутригенетика и маркеры воспаления. Точная настройка под ваш генотип и микробиом - то, что общими рекомендациями не закрыть.",
   habits:
-    "Удержание чистого нуля + раннее обнаружение сдвигов через биомаркеры регенерации. Защита того, что уже работает.",
+    "Держать ноль и не сорваться. Анализ маркеров регенерации поможет заметить откат до того, как он закрепится.",
   stress:
-    "HRV-биофидбек в реальном времени. Раннее обнаружение перегруза до того, как он накопится в кортизол и воспаление.",
+    "Обратная связь по HRV в реальном времени. Заметим перегруз до того, как он накопится в кортизоле и воспалении.",
 };
 
 const GainGrid: React.FC<{ score: ScoreResult }> = ({ score }) => {
@@ -1606,7 +1661,7 @@ const RadarPage: React.FC<{
   const domains = Object.values(score.domains);
   return (
     <Page size="A4" style={styles.page}>
-      {/* Background image — full-bleed, без вуали */}
+      {/* Background image - full-bleed, без вуали */}
       <Image
         src={imagePath("bg3.jpg")}
         fixed
@@ -1619,26 +1674,34 @@ const RadarPage: React.FC<{
           objectFit: "cover",
         }}
       />
-      <Header ordinal="06" label="Карта состояния" onDark />
+      <Header ordinal="06" label={tr("Карта состояния", "State map")} onDark />
       <View wrap={false} style={{ gap: 8 }}>
         <Text
           style={{
             alignSelf: "flex-start",
-            paddingVertical: 4,
+            paddingTop: 5,
+            paddingBottom: 3,
             paddingHorizontal: 10,
             borderRadius: 999,
             borderWidth: 1,
             borderColor: "#FFFFFF",
             color: "#FFFFFF",
             fontSize: FS.caption,
+            lineHeight: 1,
             letterSpacing: 0.5,
+            textAlign: "center",
             backgroundColor: "transparent",
           }}
         >
-          5 доменов
+          {tr("5 доменов", "5 domains")}
         </Text>
-        <Text style={[styles.display, { fontSize: FS.headline, color: "#FFFFFF" }]}>
-          Где вы сейчас — по каждой оси здоровья
+        <Text
+          style={[
+            styles.display,
+            { fontSize: FS.headline, color: "#FFFFFF", lineHeight: 1.2 },
+          ]}
+        >
+          {tr("Где вы сейчас - по каждой оси здоровья", "Where you are now across each health axis")}
         </Text>
         <Text
           style={{
@@ -1646,10 +1709,13 @@ const RadarPage: React.FC<{
             fontSize: FS.body,
             maxWidth: 460,
             lineHeight: 1.4,
+            marginTop: 8,
           }}
         >
-          100 — оптимальный уровень. Чем ближе к центру, тем больше этот домен добавляет к
-          оценке потери здоровых лет.
+          {tr(
+            "100 - оптимальный уровень. Чем ближе к центру, тем больше здоровых лет вы теряете за счёт этого домена.",
+            "100 is the optimal level. The closer to the center, the more this domain contributes to healthy-life loss.",
+          )}
         </Text>
       </View>
 
@@ -1676,15 +1742,17 @@ const RadarPage: React.FC<{
       </View>
 
       <View wrap={false} style={{ marginTop: 14 }}>
-        <Text style={[styles.mono, { color: "#FFFFFF" }]}>Что вас защищает</Text>
+        <Text style={[styles.mono, { color: "#FFFFFF" }]}>{tr("Что вас защищает", "What protects you")}</Text>
         <Text style={[styles.display, { fontSize: FS.subhead, marginTop: 4, color: "#FFFFFF" }]}>
-          Сильные стороны
+          {tr("Сильные стороны", "Strong sides")}
         </Text>
         {protectors.length === 0 ? (
           <View style={[styles.card, { marginTop: 8, padding: 12 }]}>
             <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
-              Пока нет доменов в защитной зоне. Это не приговор — это стартовая точка. У 86%
-              пользователей Longy хотя бы один домен переходит в зелёную зону за 8 недель.
+              {tr(
+                "Пока ни один домен не вышел в зелёную зону. Это не приговор, а стартовая точка. У 86% пользователей Longy хотя бы один домен переходит в зелёную зону за 8 недель.",
+                "There are no domains in a protective zone yet. This is not a verdict - this is your starting point. In 86% of users, at least one domain moves into the green zone within 8 weeks.",
+              )}
             </Text>
           </View>
         ) : (
@@ -1722,22 +1790,137 @@ const RadarPage: React.FC<{
   );
 };
 
+const LIFE_HACK_DOMAIN_LABEL: Record<DomainKey, string> = {
+  sleep: "Сон",
+  stress: "Стресс",
+  movement: "Движение",
+  nutrition: "Питание",
+  habits: "Привычки",
+};
+
+const LifeHackCard: React.FC<{
+  domain: DomainKey;
+  hack: LifeHack;
+  wide?: boolean;
+}> = ({ domain, hack, wide }) => (
+  <View
+    wrap={false}
+    style={{
+      width: wide ? "100%" : "48.5%",
+      borderRadius: 14,
+      padding: 14,
+      backgroundColor: "#EAF5EF",
+      borderWidth: 1,
+      borderColor: PALETTE.good,
+      gap: 6,
+    }}
+  >
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: PALETTE.good,
+        }}
+      />
+      <Text style={[styles.mono, { color: PALETTE.good, flex: 1 }]}>
+        {LIFE_HACK_DOMAIN_LABEL[domain].toUpperCase()}
+      </Text>
+    </View>
+    <Text
+      style={{
+        fontSize: FS.label,
+        fontWeight: 700,
+        color: PALETTE.text,
+        lineHeight: 1.35,
+      }}
+    >
+      {hack.title}
+    </Text>
+    <Text style={{ fontSize: FS.body, color: PALETTE.text, lineHeight: 1.5 }}>
+      {hack.hack}
+    </Text>
+    <Text
+      style={{
+        fontSize: FS.caption,
+        color: PALETTE.textMuted,
+        lineHeight: 1.45,
+        marginTop: 2,
+      }}
+    >
+      Почему работает: {hack.why}
+    </Text>
+  </View>
+);
+
+const LifeHacksPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
+  score,
+  answers,
+}) => {
+  const hacks = pickFourLifeHacks(score, answers);
+  return (
+    <Page size="A4" style={styles.page}>
+      <Header ordinal="07" label={tr("Лайфхаки", "Life hacks")} />
+      <View wrap={false} style={{ gap: 8 }}>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>
+            {tr("Лайфхаки, которые работают", "Small habits that work")}
+          </Text>
+        </View>
+        <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
+          {tr(
+            "4 простых приёма, которые легко встроить в день",
+            "4 simple habits that fit into any day",
+          )}
+        </Text>
+        <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480 }}>
+          {tr(
+            "Не глобальные перемены, а маленькие хитрости. Каждая с научным основанием - но без сложных слов.",
+            "Not big changes - just small tricks. Each one is grounded in research, without the jargon.",
+          )}
+        </Text>
+      </View>
+
+      <View
+        style={{
+          marginTop: 22,
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 10,
+        }}
+      >
+        <LifeHackCard domain="sleep" hack={hacks.sleep} />
+        <LifeHackCard domain="stress" hack={hacks.stress} />
+        <LifeHackCard domain="movement" hack={hacks.movement} />
+        <LifeHackCard domain="nutrition" hack={hacks.nutrition} />
+      </View>
+
+      <Footer />
+    </Page>
+  );
+};
+
 const LongyPage: React.FC<{ answers: Answers }> = () => (
   <Page size="A4" style={styles.page}>
-    <Header ordinal="07" label="Как Longy берёт это на себя" />
+    <Header ordinal="08" label={tr("Как Longy справляется с этим за вас", "How Longy handles this for you")} />
     <View wrap={false} style={{ gap: 8 }}>
-      <Text style={styles.chip}>Longy · Ваш AI health manager</Text>
+      <View style={styles.chip}>
+        <Text style={styles.chipText}>{tr("Longy · Ваш AI health ассистент", "Longy · Your AI health manager")}</Text>
+      </View>
       <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
-        Три вещи, которых нет больше{"\n"}ни в одном приложении
+        {tr("Три вещи, которых нет больше\nни в одном приложении", "Three things no other app combines")}
       </Text>
       <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480, lineHeight: 1.4 }}>
-        Longy объединяет данные с Whoop, Oura, Apple Watch, Garmin и умных весов. Внутри
-        работают AI-нутрициолог, AI-коуч, AI-терапевт и health manager — одновременно.
+        {tr(
+          "Longy объединяет данные с Whoop, Oura, Apple Watch, Garmin и многих других девайсов. Внутри работают сертифицированный менеджер здоровья, а также такие программы как AI-нутрициолог, AI-коуч, AI-терапевт - одновременно.",
+          "Longy unifies data from Whoop, Oura, Apple Watch, Garmin, and more. Inside the app, AI nutrition coach, AI performance coach, AI therapist, and health manager work together in one loop.",
+        )}
       </Text>
     </View>
 
     <View style={{ marginTop: 12, gap: 8 }}>
-      {LONGY_FEATURES.map((f, i) => (
+      {getLongyFeatures().map((f, i) => (
         <View
           key={f.title}
           wrap={false}
@@ -1796,13 +1979,12 @@ const FinalPage: React.FC<{
   answers: Answers;
 }> = () => {
   const bullets: { text: string; bold?: boolean }[] = [
-    { text: "Приложение Longy", bold: true },
-    { text: "Ваша команда: AI-Консьерж здоровья + AI-коуч + AI-Нутрициолог", bold: true },
-    { text: "Удобный план, настраиваемый под вас" },
-    { text: "Главная цель + 3 приоритета на каждый день" },
-    { text: "Тренировки, работающие для вас" },
-    { text: "Выполнимые рекомендации" },
-    { text: "Подключение носимых устройств и данных анализов" },
+    { text: tr("Команда: Сертифицированный менеджер здоровья, AI-нутрициолог + AI-спортивный тренер + AI-терапевт - работают вместе", "AI team: nutrition coach + performance coach + therapist + health manager working together") },
+    { text: tr("План, который подстраивается под ваше состояние каждый день", "A plan that adapts to your daily state") },
+    { text: tr("Главная цель + 3 приоритета на сегодня - не список на 20 пунктов", "One primary goal + 3 priorities for today, not a 20-item checklist") },
+    { text: tr("Тренировки под ваш уровень и восстановление", "Training matched to your level and recovery") },
+    { text: tr("Интеграция с Whoop, Garmin, Apple Watch, Oura, Strava, умными весами и другими трекерами", "Integrations with Whoop, Garmin, Apple Watch, Oura, Strava, smart scales, and other trackers") },
+    { text: tr("Работает даже без девайсов - начните с базовой информации о себе", "Works even without devices - start with basic self-reported data") },
   ];
 
   return (
@@ -1843,7 +2025,7 @@ const FinalPage: React.FC<{
             color: PALETTE.text,
           }}
         >
-          Не добавляйте себе ещё один план. Добавьте команду.
+          {tr("Не добавляйте себе ещё один план. Добавьте команду.", "Don't add another plan. Add a team.")}
         </Text>
 
         {/* Intro paragraph */}
@@ -1859,9 +2041,10 @@ const FinalPage: React.FC<{
             color: PALETTE.text,
           }}
         >
-          Большинство срывается не потому, что «плохой план». А потому что вы один. Longy — это
-          когда рядом про-команда, которая держит ритм и помогает не откатываться. Наука в
-          основе — сервис в исполнении.
+          {tr(
+            "Большинство срывается не из-за плохого плана. А потому что делают всё в одиночку. Longy - это когда рядом профессиональная команда, которая держит ритм и помогает не сорваться. Наука в основе - сервис в исполнении.",
+            "Most people don't fail because the plan is bad, but because they execute alone. Longy gives you a professional team that protects consistency and prevents relapse. Science in the model, service in execution.",
+          )}
         </Text>
 
         {/* Main card: phone + right col */}
@@ -1910,7 +2093,7 @@ const FinalPage: React.FC<{
                 marginBottom: 16,
               }}
             >
-              Что вы получаете с Longy:
+              {tr("Что вы получаете:", "What you get:")}
             </Text>
 
             <View style={{ gap: 8, marginBottom: 18 }}>
@@ -1946,7 +2129,8 @@ const FinalPage: React.FC<{
             <View
               style={{
                 width: 215,
-                paddingVertical: 12,
+                paddingTop: 13,
+                paddingBottom: 11,
                 paddingHorizontal: 16,
                 borderRadius: 20,
                 backgroundColor: PALETTE.accent,
@@ -1959,9 +2143,11 @@ const FinalPage: React.FC<{
                   color: "#FFFFFF",
                   fontSize: FS.label,
                   fontWeight: 500,
+                  lineHeight: 1,
+                  textAlign: "center",
                 }}
               >
-                Продолжить с Longy
+                {tr("Продолжить с Longy", "Continue with Longy")}
               </Text>
             </View>
 
@@ -1995,7 +2181,7 @@ const FinalPage: React.FC<{
             color: PALETTE.textFaint,
           }}
         >
-          Не является клиническим диагнозом
+          {tr("Не является клиническим диагнозом", "Not a clinical diagnosis")}
         </Text>
         <View
           style={{
@@ -2006,8 +2192,8 @@ const FinalPage: React.FC<{
             gap: 14,
           }}
         >
-          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>Конфиденциальность</Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>Условия</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>{tr("Конфиденциальность", "Privacy")}</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption }}>{tr("Условия", "Terms")}</Text>
         </View>
       </View>
     </Page>
@@ -2016,11 +2202,13 @@ const FinalPage: React.FC<{
 
 const MethodologyPage: React.FC = () => (
   <Page size="A4" style={styles.page}>
-    <Header ordinal="09" label="Методология" />
+    <Header ordinal="09" label={tr("Методология", "Methodology")} />
     <View wrap={false} style={{ gap: 8 }}>
-      <Text style={styles.chip}>Методология отчёта</Text>
+      <View style={styles.chip}>
+        <Text style={styles.chipText}>{tr("Методология отчёта", "Report methodology")}</Text>
+      </View>
       <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
-        На чём построен этот отчёт
+        {tr("На чём построен этот отчёт", "What this report is built on")}
       </Text>
       <Text
         style={{
@@ -2030,7 +2218,10 @@ const MethodologyPage: React.FC = () => (
           lineHeight: 1.4,
         }}
       >
-        Скрининговые инструменты и исследовательская база, на которые опирается Longy.
+        {tr(
+          "Скрининговые инструменты и исследовательская база, на которые опирается аудит здоровья Longy.",
+          "Clinical screening instruments and research evidence that Longy relies on.",
+        )}
       </Text>
     </View>
 
@@ -2060,19 +2251,16 @@ const ScientificCredibilityBlock: React.FC = () => (
     }}
   >
     <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.55 }}>
-      Отчёт построен на клинически валидированных скрининговых инструментах с
-      подтверждёнными психометрическими свойствами: Insomnia Severity Index (ISI-7) для
-      оценки сна, Perceived Stress Scale (PSS-10) и PROMIS Fatigue 7a для стресса и
-      энергии, Duke Activity Status Index (DASI) и IPAQ-SF для функционального статуса и
-      физической активности, Mini-EAT для питания.
+      {tr(
+        "Отчёт построен на клинически валидированных скрининговых инструментах с подтверждёнными психометрическими свойствами: Insomnia Severity Index (ISI-7) для оценки сна, Perceived Stress Scale (PSS-10) и PROMIS Fatigue 7a для стресса и энергии, Duke Activity Status Index (DASI) и IPAQ-SF для функционального статуса и физической активности, Mini-EAT для питания.",
+        "This report is built on clinically validated screening instruments with established psychometric properties: Insomnia Severity Index (ISI-7) for sleep assessment, Perceived Stress Scale (PSS-10) and PROMIS Fatigue 7a for stress and energy, Duke Activity Status Index (DASI) and IPAQ-SF for functional status and physical activity, and Mini-EAT for nutrition.",
+      )}
     </Text>
     <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.55, marginTop: 10 }}>
-      * Методология Longy вдохновлена исследованием Li et al. (Harvard Medical School,
-      J Intern Med 2024) о 5 факторах долголетия, дающих до +12 лет здоровой жизни на
-      выборке 2 млн+ человек. Применён собственный алгоритм калибровки под
-      скрининговый контекст. Longy — wellness-сервис: выводы не заменяют медицинскую
-      диагностику и консультацию врача. При хронических заболеваниях обсуждайте любые
-      изменения образа жизни с лечащим врачом.
+      {tr(
+        "* Методология Longy вдохновлена исследованием Li et al. (Harvard Medical School, J Intern Med 2024) о 5 факторах долголетия, дающих до +12 лет здоровой жизни на выборке 2 млн+ человек. Применён собственный алгоритм калибровки под скрининговый контекст. Longy - wellness-сервис: выводы не заменяют медицинскую диагностику и консультацию врача. При хронических заболеваниях обсуждайте любые изменения образа жизни с лечащим врачом.",
+        "* Longy methodology is inspired by Li et al. (Harvard Medical School, J Intern Med 2024) on 5 longevity factors associated with up to +12 healthy years in a 2M+ cohort. A proprietary calibration algorithm is applied for screening context. Longy is a wellness service: conclusions do not replace medical diagnosis or physician consultation. If you have chronic conditions, discuss lifestyle changes with your treating physician.",
+      )}
     </Text>
     <View
       style={{
@@ -2137,7 +2325,10 @@ const DomainRow = ({ domain }: { domain: DomainScore }) => {
         <View style={{ flex: 1, paddingRight: 6 }}>
           <Text style={{ color: PALETTE.text, fontSize: FS.body }}>{domain.label}</Text>
           <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption, marginTop: 2 }}>
-            ≈{domain.yearsLifeLost.toFixed(1)} лет в модели
+            {tr(
+              `≈${domain.yearsLifeLost.toFixed(1)} лет в модели`,
+              `≈${domain.yearsLifeLost.toFixed(1)} years in model`,
+            )}
           </Text>
         </View>
         <Text style={{ color, fontSize: FS.body, fontFamily: "Geist" }}>{domain.score0to100}</Text>
@@ -2179,12 +2370,21 @@ const LegendPill = ({
       backgroundColor: active ? "#FFFFFF" : "transparent",
     }}
   >
-    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
+    <View
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: color,
+        marginBottom: 3,
+      }}
+    />
     <Text
       style={{
         color: active ? PALETTE.text : PALETTE.textMuted,
         fontSize: FS.caption,
         fontWeight: active ? 700 : 400,
+        lineHeight: 1.2,
       }}
     >
       {label}
@@ -2406,7 +2606,7 @@ const WaterfallSvg = ({
           fontWeight: 600,
         }}
       >
-        лет
+        {tr("лет", "years")}
       </Text>
 
       {/* Подписи баров снизу и значений сверху */}
@@ -2427,7 +2627,7 @@ const WaterfallSvg = ({
               }}
             >
               {yv > 0 ? "+" : ""}
-              {yv.toFixed(1)} лет
+              {yv.toFixed(1)} {tr("лет", "years")}
             </Text>
             <Text
               style={{
@@ -2459,7 +2659,7 @@ const WaterfallSvg = ({
             fontWeight: 700,
           }}
         >
-          {mode === "gain" ? "+" : "≈"}{totalYears.toFixed(1)} лет
+          {mode === "gain" ? "+" : "≈"}{totalYears.toFixed(1)} {tr("лет", "years")}
         </Text>
         <Text
           style={{
@@ -2472,7 +2672,7 @@ const WaterfallSvg = ({
             fontWeight: 600,
           }}
         >
-          Итого
+          {tr("Итого", "Total")}
         </Text>
       </View>
     </View>
@@ -2481,12 +2681,12 @@ const WaterfallSvg = ({
 
 const shortLabelFor = (key: string, fallback: string): string => {
   const map: Record<string, string> = {
-    stress: "Стресс",
-    sleep: "Сон",
-    movement: "Движение",
-    nutrition: "Питание",
-    habits: "Привычки",
-    bmi: "ИМТ / талия",
+    stress: tr("Стресс", "Stress"),
+    sleep: tr("Сон", "Sleep"),
+    movement: tr("Движение", "Movement"),
+    nutrition: tr("Питание", "Nutrition"),
+    habits: tr("Привычки", "Habits"),
+    bmi: tr("ИМТ / талия", "BMI / waist"),
   };
   return map[key] ?? fallback;
 };
@@ -2615,7 +2815,7 @@ const ImpactPreviewSvg = ({
           textTransform: "uppercase",
         }}
       >
-        Сейчас
+        {tr("Сейчас", "Now")}
       </Text>
       <Text
         style={{
@@ -2630,7 +2830,7 @@ const ImpactPreviewSvg = ({
           textTransform: "uppercase",
         }}
       >
-        8 недель
+        {tr("8 недель", "8 weeks")}
       </Text>
     </View>
   );
@@ -2699,12 +2899,15 @@ const SpeedometerSvg = ({ velocity, width }: { velocity: number; width: number }
   );
 };
 
-const RADAR_SHORT_LABEL: Record<DomainKey, string> = {
-  sleep: "Сон",
-  movement: "Движение",
-  nutrition: "Питание",
-  stress: "Стресс",
-  habits: "Привычки",
+const radarShortLabel = (key: DomainKey): string => {
+  const map: Record<DomainKey, string> = {
+    sleep: tr("Сон", "Sleep"),
+    movement: tr("Движение", "Movement"),
+    nutrition: tr("Питание", "Nutrition"),
+    stress: tr("Стресс", "Stress"),
+    habits: tr("Привычки", "Habits"),
+  };
+  return map[key];
 };
 
 const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) => {
@@ -2722,7 +2925,7 @@ const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) =
     };
   };
 
-  // Позиция для подписи оси — чуть дальше максимального радиуса.
+  // Позиция для подписи оси - чуть дальше максимального радиуса.
   const labelFor = (i: number) => {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / n;
     const r = radius + 18;
@@ -2810,7 +3013,7 @@ const RadarSvg = ({ domains, size }: { domains: DomainScore[]; size: number }) =
                 textAlign: "center",
               }}
             >
-              {RADAR_SHORT_LABEL[d.key]}
+              {radarShortLabel(d.key)}
             </Text>
             <Text
               style={{
@@ -2845,15 +3048,15 @@ function longyScoreTone(band: ScoreResult["longyScoreBand"]): string {
 function bmiLabel(c: ScoreResult["bmiCategory"]): string {
   switch (c) {
     case "underweight":
-      return "Ниже нормы";
+      return tr("Ниже нормы", "Below normal");
     case "normal":
-      return "В норме";
+      return tr("В норме", "Normal");
     case "overweight":
-      return "Избыточный";
+      return tr("Избыточный", "Overweight");
     case "obese":
-      return "Ожирение";
+      return tr("Ожирение", "Obese");
     default:
-      return "—";
+      return "-";
   }
 }
 
@@ -2876,13 +3079,13 @@ function trackerLabel(t: string): string {
     case "garmin":
       return "Garmin";
     case "smart_scales":
-      return "Смарт-весы";
+      return tr("Смарт-весы", "Smart scales");
     case "smart_mattress":
-      return "Смарт-матрас";
+      return tr("Смарт-матрас", "Smart mattress");
     case "other":
-      return "Другое";
+      return tr("Другое", "Other");
     case "none":
-      return "—";
+      return "-";
     default:
       return t;
   }

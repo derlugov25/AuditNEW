@@ -1,5 +1,18 @@
 export type Lang = "ru" | "en";
 
+// Текущий язык отчёта. Меняется через setLang() - например, по директиве `lang: en` в input.txt.
+let _CURRENT_LANG: Lang = "ru";
+
+export function setLang(lang: Lang): void {
+  _CURRENT_LANG = lang;
+}
+
+export function getLang(): Lang {
+  return _CURRENT_LANG;
+}
+
+// Сохраняем для обратной совместимости. ВНИМАНИЕ: это снимок на момент импорта.
+// Используйте getLang() для актуального значения.
 export const LANG: Lang = "ru";
 
 type Dict = {
@@ -61,7 +74,7 @@ const DICT: Record<Lang, Dict> = {
     footer: {
       site: "longy.ai",
       email: "info@longy.ai",
-      notClinical: "Not a clinical diagnosis",
+      notClinical: "Не является клиническим диагнозом",
       privacy: "Конфиденциальность",
       terms: "Условия",
     },
@@ -71,7 +84,7 @@ const DICT: Record<Lang, Dict> = {
       notClinical: "Не является клиническим диагнозом",
       privacyPolicy: "Privacy Policy",
       termsOfService: "Terms of Service",
-      emptyName: "—",
+      emptyName: "-",
     },
     cover: {
       ordinal: "Обложка",
@@ -90,19 +103,19 @@ const DICT: Record<Lang, Dict> = {
       outOf100: "/ 100",
       mainDriver: "Главный драйвер",
       strongestSupport: "Ваша сильнейшая опора",
-      mainDriverEmpty: "—",
+      mainDriverEmpty: "-",
       yearsOfLife: (years) => `≈${years} лет здоровой жизни`,
       topPercent: (n) => `Вы в верхней ${n}% среди ровесников по Longy Health Score`,
       percentileChip: "Ранг по Longy Health Score",
     },
     final: {
       ctaLabel: "Что дальше",
-      ctaLabelOptimize: "Как сохранить и продвинуть",
+      ctaLabelOptimize: "Как сохранить и улучшить",
       ctaTitle: "Получить глубокий аудит в приложении",
       ctaTitleOptimize: "Сохранить результат и дойти до top-1%",
     },
     common: {
-      dash: "—",
+      dash: "-",
     },
   },
   en: {
@@ -122,7 +135,7 @@ const DICT: Record<Lang, Dict> = {
       notClinical: "Not a clinical diagnosis",
       privacyPolicy: "Privacy Policy",
       termsOfService: "Terms of Service",
-      emptyName: "—",
+      emptyName: "-",
     },
     cover: {
       ordinal: "Cover",
@@ -141,7 +154,7 @@ const DICT: Record<Lang, Dict> = {
       outOf100: "/ 100",
       mainDriver: "Main driver",
       strongestSupport: "Your strongest pillar",
-      mainDriverEmpty: "—",
+      mainDriverEmpty: "-",
       yearsOfLife: (years) => `≈${years} years of healthy life`,
       topPercent: (n) => `You are in the top ${n}% among peers by Longy Health Score`,
       percentileChip: "Your rank vs peers",
@@ -153,12 +166,45 @@ const DICT: Record<Lang, Dict> = {
       ctaTitleOptimize: "Preserve your result and reach top-1%",
     },
     common: {
-      dash: "—",
+      dash: "-",
     },
   },
 };
 
-export const T: Dict = DICT[LANG];
+// Динамический прокси на словарь текущего языка.
+// `T.cover.headlineLine1` всегда возвращает значение из DICT[currentLang].
+export const T: Dict = new Proxy({} as Dict, {
+  get(_target, prop: string) {
+    return (DICT[_CURRENT_LANG] as unknown as Record<string, unknown>)[prop];
+  },
+}) as Dict;
+
+// Простой инлайн-переводчик: tr("Текст", "Text") вернёт нужный вариант для текущего языка.
+export function tr(ru: string, en: string): string {
+  return _CURRENT_LANG === "en" ? en : ru;
+}
+
+// Множественное число для английского (1 unit / N units).
+export function pluralEn(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
+}
+
+// Универсальный плюрал: для RU использует mod-правила, для EN - one/many.
+export function plural(
+  n: number,
+  ru: { one: string; few: string; many: string },
+  en: { one: string; many: string },
+): string {
+  if (_CURRENT_LANG === "en") return pluralEn(n, en.one, en.many);
+  return pluralRu(n, ru.one, ru.few, ru.many);
+}
+
+// Стандартное «X лет» / «X years».
+export function formatYears(n: number): string {
+  const rounded = Number.isInteger(n) ? n : Number(n.toFixed(1));
+  if (_CURRENT_LANG === "en") return `${rounded} ${pluralEn(rounded, "year", "years")}`;
+  return `${rounded} ${pluralRu(Math.round(rounded), "год", "года", "лет")}`;
+}
 
 export function pluralRu(n: number, one: string, few: string, many: string): string {
   const mod10 = n % 10;
@@ -169,14 +215,14 @@ export function pluralRu(n: number, one: string, few: string, many: string): str
 }
 
 export function formatAge(age: number): string {
-  if (LANG === "ru") {
+  if (_CURRENT_LANG === "ru") {
     return `${age} ${pluralRu(age, "год", "года", "лет")}`;
   }
   return age === 1 ? `${age} year` : `${age} years`;
 }
 
 export function formatReportDate(date: Date = new Date()): string {
-  return LANG === "ru"
+  return _CURRENT_LANG === "ru"
     ? date.toLocaleDateString("ru-RU", {
         day: "numeric",
         month: "long",

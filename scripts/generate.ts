@@ -8,6 +8,7 @@ import { readInputFile } from "@/lib/input-parser";
 import { calculateScore } from "@/lib/scoring";
 import { buildAccelerators, buildProtectors } from "@/lib/insights";
 import Report from "@/components/pdf/Report";
+import { setLang } from "@/lib/i18n";
 
 const INPUT_PATH = path.resolve(process.cwd(), "input.txt");
 const OUTPUT_DIR = path.resolve(process.cwd(), "output");
@@ -18,14 +19,16 @@ function main() {
     process.exit(1);
   }
 
-  const { answers, errors, warnings } = readInputFile(INPUT_PATH);
+  const { answers, errors, warnings, lang } = readInputFile(INPUT_PATH);
+  setLang(lang);
+  console.log(`  ${lang === "en" ? "Report language" : "Язык отчёта"}: ${lang === "en" ? "English" : "Русский"}`);
 
   if (warnings.length) {
     for (const w of warnings) console.warn(`⚠ ${w}`);
   }
 
   if (errors.length) {
-    console.error("\n✗ Ошибки в input.txt — PDF не сгенерирован:");
+    console.error("\n✗ Ошибки в input.txt - PDF не сгенерирован:");
     for (const e of errors) {
       const prefix = e.question ? `Q${e.question}` : `строка ${e.line}`;
       console.error(`  · ${prefix}: ${e.message}`);
@@ -37,37 +40,49 @@ function main() {
   const accelerators = buildAccelerators(answers, score);
   const protectors = buildProtectors(score);
 
-  console.log("\n─── Результат скоринга ─────────────────────────────");
+  console.log(`\n─── ${lang === "en" ? "Scoring result" : "Результат скоринга"} ─────────────────────────────`);
   console.log(
     `  Longy Health Score:  ${score.longyScore} / 100  (${score.longyScoreBand})`,
   );
   console.log(
-    `  Потеря здоровых лет: ≈${score.yearsLifeLostTotal.toFixed(1)} лет (модель; velocity ${score.agingVelocityPct > 0 ? "+" : ""}${score.agingVelocityPct}%)`,
+    lang === "en"
+      ? `  Healthy years lost: ≈${score.yearsLifeLostTotal.toFixed(1)} years (model; velocity ${score.agingVelocityPct > 0 ? "+" : ""}${score.agingVelocityPct}%)`
+      : `  Потеря здоровых лет: ≈${score.yearsLifeLostTotal.toFixed(1)} лет (модель; velocity ${score.agingVelocityPct > 0 ? "+" : ""}${score.agingVelocityPct}%)`,
   );
   console.log(
-    `  Индекс массы тела:   ${score.bmi ?? "—"} (${score.bmiCategory})`,
+    lang === "en"
+      ? `  Body mass index:     ${score.bmi ?? "-"} (${score.bmiCategory})`
+      : `  Индекс массы тела:   ${score.bmi ?? "-"} (${score.bmiCategory})`,
   );
   if (score.goalDomainScore) {
     console.log(
-      `  Домен цели:          ${score.goalDomainScore.label} — ${score.goalDomainScore.score0to100}/100`,
+      lang === "en"
+        ? `  Goal domain:         ${score.goalDomainScore.label} - ${score.goalDomainScore.score0to100}/100`
+        : `  Домен цели:          ${score.goalDomainScore.label} - ${score.goalDomainScore.score0to100}/100`,
     );
   }
   {
     const gap = Math.max(0, score.healthspanMax - score.healthspanYears);
     console.log(
-      `  Healthspan gap:      −${gap.toFixed(1)} лет на столе  (реализовано +${score.healthspanYears.toFixed(1)} / +${score.healthspanMax})`,
+      lang === "en"
+        ? `  Healthspan gap:      −${gap.toFixed(1)} years on the table  (realized +${score.healthspanYears.toFixed(1)} / +${score.healthspanMax})`
+        : `  Healthspan gap:      −${gap.toFixed(1)} лет на столе  (реализовано +${score.healthspanYears.toFixed(1)} / +${score.healthspanMax})`,
     );
   }
-  console.log("  Топ ускорителей:");
+  console.log(`  ${lang === "en" ? "Top accelerators" : "Топ ускорителей"}:`);
   for (const acc of accelerators) {
     console.log(
-      `    · ${score.domains[acc.key].label}  —  ≈${score.domains[acc.key].yearsLifeLost.toFixed(1)} лет`,
+      lang === "en"
+        ? `    · ${score.domains[acc.key].label}  -  ≈${score.domains[acc.key].yearsLifeLost.toFixed(1)} years`
+        : `    · ${score.domains[acc.key].label}  -  ≈${score.domains[acc.key].yearsLifeLost.toFixed(1)} лет`,
     );
   }
   const p = score.projection;
   if (p.deltaScore > 0) {
     console.log(
-      `  Проекция (8 нед.):   Longy Health Score ${p.longyScoreNow} → ${p.longyScoreTarget} (+${p.deltaScore}),  годы ≈${p.yearsLifeLostNow.toFixed(1)} → ≈${p.yearsLifeLostTarget.toFixed(1)}`,
+      lang === "en"
+        ? `  8-week projection:  Longy Health Score ${p.longyScoreNow} → ${p.longyScoreTarget} (+${p.deltaScore}), years ≈${p.yearsLifeLostNow.toFixed(1)} → ≈${p.yearsLifeLostTarget.toFixed(1)}`
+        : `  Проекция (8 нед.):   Longy Health Score ${p.longyScoreNow} → ${p.longyScoreTarget} (+${p.deltaScore}),  годы ≈${p.yearsLifeLostNow.toFixed(1)} → ≈${p.yearsLifeLostTarget.toFixed(1)}`,
     );
   }
   console.log("────────────────────────────────────────────────────\n");
