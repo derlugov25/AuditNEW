@@ -1489,7 +1489,7 @@ const MAIN_DRIVER_VARIANTS: Record<DomainKey, MainDriverVariant[]> = {
     {
       match: (a) => a.activeDays === "0",
       headline: "Движения почти нет",
-      subtext: "Мышцы - главный орган долголетия",
+      subtext: "Мышцы - главный двигатель метаболизма и долголетия",
     },
     {
       match: (a) => a.sittingHours === "8+" && (a.activeDays === "0" || a.activeDays === "1-2"),
