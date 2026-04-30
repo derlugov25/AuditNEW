@@ -1004,7 +1004,7 @@ const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
           `Your lifestyle already realizes most of its potential: +${years.toFixed(1)} out of +${max} healthy years.* This report highlights where to capture the remaining upside.`,
         )
       : tr(
-          `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас у вас +${years.toFixed(1)} - ещё +${gap} можно добрать.`,
+          `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас у вас +${years.toFixed(1)} — ещё на +${gap} можно продлить.`,
           `An ideal lifestyle across 5 factors can add up to +${max} healthy years.* You currently realize +${years.toFixed(1)} - about +${gap} remain in reserve.`,
         );
 
@@ -1105,7 +1105,7 @@ const AcceleratorsPage: React.FC<{
         <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
           {isOptimizing
             ? tr("Где есть потенциал для роста", "Where growth potential remains")
-            : tr("Что съедает ваши годы здоровой жизни", "What's eating your healthy-life years")}
+            : tr("Что отнимает у вас годы здоровой жизни", "What's taking away your healthy-life years")}
         </Text>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.body }}>
           {isOptimizing
@@ -1114,7 +1114,7 @@ const AcceleratorsPage: React.FC<{
                 "You already have a strong baseline. Below are the three domains with the highest marginal upside. Each step is small, but together they compound.",
               )
             : tr(
-                "Отсортировано по влиянию на потерю здоровых лет. Работайте сверху вниз - первый блок даст самый быстрый эффект.",
+                "Отсортировано по влиянию на потерю здоровых лет. Идите от верхней карточки вниз — первый блок даст самый быстрый эффект.",
                 "Sorted by impact on healthy-life loss. Work top-down - the first item gives the fastest return.",
               )}
         </Text>
@@ -1360,7 +1360,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ sc
                 Longy Health Score вырастет с{" "}
                 <Text style={{ color: PALETTE.textMuted }}>{proj.longyScoreNow}</Text>{" "}
                 до <Text style={{ color: PALETTE.accent }}>{proj.longyScoreTarget}</Text>.
-                Вот что конкретно Longy делает по трём главным рычагам:
+                Вот что конкретно Longy делает по трём главным факторам:
               </Text>
             </View>
           </View>
