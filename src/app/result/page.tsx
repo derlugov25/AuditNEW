@@ -157,7 +157,7 @@ export default function ResultPage() {
                 <div className="text-white/40 text-xl">/ 100</div>
               </div>
               <p className="mt-4 text-white/70 leading-relaxed">
-                {longyScoreLabel(score.longyScoreBand).label}. Ниже - три личных драйвера и
+                {longyScoreLabel(score.longyScoreBand).label}. Ниже — три главных фактора и
                 что с ними делать.
               </p>
             </div>
@@ -222,12 +222,12 @@ export default function ResultPage() {
             return (
               <>
                 <div className="mono text-xs text-accent-primary/80">
-                  {isOptimizing ? "МАРЖИНАЛЬНЫЙ ПОТЕНЦИАЛ" : "ТОП-3 УСКОРИТЕЛЯ У ВАС"}
+                  {isOptimizing ? "ГДЕ МОЖНО ДОЖАТЬ" : "ТОП-3 ГЛАВНЫХ ФАКТОРА"}
                 </div>
                 <h2 className="display text-3xl md:text-4xl mt-2">
                   {isOptimizing
                     ? "Где есть потенциал для роста"
-                    : "Что именно «стоит» в годах здоровой жизни"}
+                    : "Что отнимает у вас годы здоровой жизни"}
                 </h2>
               </>
             );
@@ -337,8 +337,8 @@ export default function ResultPage() {
                 Скачайте полный аудит в PDF
               </h3>
               <p className="text-white/60 mt-2 max-w-xl">
-                Персональный отчёт на 7 страниц: обложка, вердикт, топ-3 ускорителя, радар
-                доменов, сильные стороны и разбор, как Longy возьмёт ведение на себя.
+                Персональный отчёт на 12 страниц: обложка, вердикт, цель, топ-3 фактора,
+                разбор по доменам, лайфхаки, сильные стороны, описание Longy и методология.
               </p>
             </div>
             <button onClick={onDownload} disabled={downloading} className="btn-primary disabled:opacity-60">

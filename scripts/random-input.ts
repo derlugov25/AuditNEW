@@ -80,6 +80,12 @@ function randomEmail(displayName: string): string {
   return `${base}.${intIn(10, 99)}@example.com`;
 }
 
+/** splitMultiTokens режет по любой `,` — лейблы с запятой внутри (Q11) в input.txt недопустимы. */
+
+function joinMultiLabels(labels: string[]): string {
+  return labels.join(", ");
+}
+
 function lineForQuestion(
   index1: number,
   q: (typeof QUESTIONS)[number],
@@ -93,26 +99,30 @@ function lineForQuestion(
       if (Math.random() < 0.42) return `${index1}. Нет`;
       const opts = q.options.filter((o) => o.value !== "none");
       const k = intIn(1, Math.min(3, opts.length));
-      return `${index1}. ${shuffle(opts)
-        .slice(0, k)
-        .map((o) => o.label)
-        .join(", ")}`;
+      return `${index1}. ${joinMultiLabels(
+        shuffle(opts)
+          .slice(0, k)
+          .map((o) => o.label),
+      )}`;
     }
     if (q.id === "functionalActivities") {
-      const k = intIn(1, 4);
-      return `${index1}. ${shuffle(q.options)
-        .slice(0, k)
-        .map((o) => o.label)
-        .join(", ")}`;
+      const pool = q.options.filter((o) => !o.label.includes(","));
+      const k = intIn(1, Math.min(4, pool.length));
+      return `${index1}. ${joinMultiLabels(
+        shuffle(pool)
+          .slice(0, k)
+          .map((o) => o.label),
+      )}`;
     }
     if (q.id === "trackers") {
       if (Math.random() < 0.38) return `${index1}. Не пользуюсь`;
       const opts = q.options.filter((o) => o.value !== "none");
       const k = intIn(1, Math.min(3, opts.length));
-      return `${index1}. ${shuffle(opts)
-        .slice(0, k)
-        .map((o) => o.label)
-        .join(", ")}`;
+      return `${index1}. ${joinMultiLabels(
+        shuffle(opts)
+          .slice(0, k)
+          .map((o) => o.label),
+      )}`;
     }
     return `${index1}. ${pick(q.options).label}`;
   }

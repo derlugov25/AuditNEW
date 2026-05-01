@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Longy · Аудит скорости старения",
   description:
-    "Персональный аудит: оценка потери здоровых лет из-за образа жизни и три главных рычага. Методология Li et al., J Intern Med 2024.",
+    "Персональный аудит: оценка потери здоровых лет из-за образа жизни и три главных фактора. Методология Li et al., J Intern Med 2024.",
 };
 
 export default function RootLayout({

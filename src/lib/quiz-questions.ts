@@ -320,7 +320,7 @@ export const QUESTIONS: Question[] = [
     type: "single",
     step: "habits",
     title: "Что сейчас мешает вам больше всего начать заботиться о себе регулярно?",
-    hint: "Longy подстроит план под ваш барьер",
+    hint: "Longy подстроит план под то, что вам сейчас мешает",
     options: [
       { value: "time", label: "Не хватает времени" },
       { value: "energy", label: "Не хватает энергии" },

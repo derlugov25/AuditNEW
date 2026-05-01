@@ -86,6 +86,7 @@ const PALETTE = {
   warm: "#D9481C",
   danger: "#C03A2B",
   calm: "#00B158",
+  lime: "#9ACD32",
   amber: "#F5A623",
   good: "#1F7A3A",
 };
@@ -753,7 +754,9 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
   score,
   answers,
 }) => {
-  const velocity = score.agingVelocityPct;
+  // Стрелка спидометра привязана к потере здоровых лет (12 - healthspanYears).
+  // 0 = стрелка слева (Лучше нормы), 12 = справа (Критическое).
+  const velocity = score.yearsLifeLostTotal;
   const isGain = score.isGainBranch;
   const verdictText = isGain
     ? tr(
@@ -833,7 +836,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
             return (
               <>
                 <LegendPill color={PALETTE.calm} label={tr("Лучше нормы", "Below norm")} active={zone === "below"} />
-                <LegendPill color={PALETTE.accent} label={tr("Норма", "Normal")} active={zone === "normal"} />
+                <LegendPill color={PALETTE.lime} label={tr("Норма", "Normal")} active={zone === "normal"} />
                 <LegendPill color={PALETTE.amber} label={tr("Ускоренное", "Accelerated")} active={zone === "acceleration"} />
                 <LegendPill color={PALETTE.warm} label={tr("Высокий риск", "High risk")} active={zone === "risk"} />
                 <LegendPill color={PALETTE.danger} label={tr("Критическое", "Critical")} active={zone === "critical"} />
@@ -912,7 +915,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
               return (
                 <View style={{ marginTop: 12, gap: 6 }}>
                   <Text style={[styles.mono, { color: PALETTE.accent }]}>
-                    {tr("Что Longy делает под вашу цель", "How Longy supports your goal")}
+                    {tr("Как Longy работает на вашу цель", "How Longy works toward your goal")}
                   </Text>
                   {lg.bullets.map((b, i) => (
                     <View key={i} style={{ flexDirection: "row", gap: 6 }}>
@@ -2392,14 +2395,14 @@ const LegendPill = ({
   </View>
 );
 
-// Velocity → zone key, used to highlight the active LegendPill.
+// Years-lost (0..12) → zone key, used to highlight the active LegendPill.
 function velocityZoneKey(
-  velocity: number,
+  yearsLost: number,
 ): "below" | "normal" | "acceleration" | "risk" | "critical" {
-  if (velocity < 0) return "below";
-  if (velocity < 8) return "normal";
-  if (velocity < 18) return "acceleration";
-  if (velocity < 28) return "risk";
+  if (yearsLost < 1) return "below";
+  if (yearsLost < 3) return "normal";
+  if (yearsLost < 6) return "acceleration";
+  if (yearsLost < 9) return "risk";
   return "critical";
 }
 
@@ -2837,9 +2840,10 @@ const ImpactPreviewSvg = ({
 };
 
 const SpeedometerSvg = ({ velocity, width }: { velocity: number; width: number }) => {
+  // velocity здесь = потеря здоровых лет (0..12).
   const size = width;
-  const min = -10;
-  const max = 40;
+  const min = 0;
+  const max = 12;
   const clamped = Math.max(min, Math.min(max, velocity));
   const pct = (clamped - min) / (max - min);
 
@@ -2879,11 +2883,11 @@ const SpeedometerSvg = ({ velocity, width }: { velocity: number; width: number }
 
   return (
     <Svg width={size} height={size * 0.7}>
-      {arc(bp(-10), bp(0), PALETTE.calm, "a1")}
-      {arc(bp(0), bp(8), PALETTE.accent, "a2")}
-      {arc(bp(8), bp(18), PALETTE.amber, "a3")}
-      {arc(bp(18), bp(28), PALETTE.warm, "a4")}
-      {arc(bp(28), bp(40), PALETTE.danger, "a5")}
+      {arc(bp(0), bp(1), PALETTE.calm, "a1")}
+      {arc(bp(1), bp(3), PALETTE.lime, "a2")}
+      {arc(bp(3), bp(6), PALETTE.amber, "a3")}
+      {arc(bp(6), bp(9), PALETTE.warm, "a4")}
+      {arc(bp(9), bp(12), PALETTE.danger, "a5")}
 
       <Line
         x1={cx}
