@@ -246,6 +246,7 @@ export const Report: React.FC<ReportProps> = ({
         <AcceleratorsPage accelerators={accelerators} score={score} />
         {(tone !== "optimize" || score.isGainBranch) && <ProjectionPage score={score} answers={answers} />}
         <RadarPage score={score} protectors={protectors} />
+        <GoalPage score={score} answers={answers} />
         <LifeHacksPage score={score} answers={answers} />
         <LongyPage answers={answers} />
         <FinalPage name={name} score={score} answers={answers} />
@@ -804,7 +805,7 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
           <Text style={[styles.mono, { textAlign: "center" }]}>
             {tr("Где вы сейчас находитесь по вашей скорости старения", "Where you currently stand by aging speed")}
           </Text>
-          <SpeedometerSvg velocity={velocity} width={220} />
+          <SpeedometerSvg velocity={velocity} width={280} />
           <Text
             style={{
               color: PALETTE.text,
@@ -844,126 +845,137 @@ const VerdictPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
         </View>
       </View>
 
-      <View wrap={false} style={{ marginTop: 24, flexDirection: "row", gap: 10 }}>
-        <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>{tr("Ваша цель", "Your goal")}</Text>
-          <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
-            {goalLabel(answers.goal)}
-          </Text>
-        </View>
-        <View style={[styles.card, { flex: 1 }]}>
-          <Text style={styles.mono}>{tr("Трекеры", "Trackers")}</Text>
-          <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
-            {answers.trackers && answers.trackers.length > 0
-              ? answers.trackers.map(trackerLabel).join(", ")
-              : tr("Пока не используете", "Not using yet")}
-          </Text>
-        </View>
-      </View>
-
-      {(() => {
-        const g = goalDomainHeadline(
-          answers.goal,
-          score.goalDomain,
-          score.goalDomainScore?.score0to100 ?? null,
-        );
-        if (!g || !score.goalDomainScore) return null;
-        const tone = g.mode === "strength" ? PALETTE.accent : PALETTE.warm;
-        return (
-          <View
-            wrap={false}
-            style={{
-              marginTop: 14,
-              borderRadius: 14,
-              padding: 14,
-              backgroundColor: "#FEF0EB",
-              borderWidth: 1,
-              borderColor: tone,
-            }}
-          >
-            <Text style={[styles.mono, { color: tone }]}>{g.label}</Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "baseline",
-                gap: 8,
-                marginTop: 6,
-              }}
-            >
-              <Text style={[styles.display, { fontSize: FS.label, lineHeight: 1.2 }]}>
-                {score.goalDomainScore.label}
-              </Text>
-              <Text style={{ color: tone, fontSize: FS.body }}>
-                {score.goalDomainScore.score0to100}/100
-              </Text>
-            </View>
-            <Text
-              style={{
-                color: PALETTE.textMuted,
-                fontSize: FS.body,
-                marginTop: 6,
-                lineHeight: 1.5,
-              }}
-            >
-              {g.reason}
-            </Text>
-            {(() => {
-              const lg = longyForGoalBlock(answers.goal);
-              if (!lg) return null;
-              return (
-                <View style={{ marginTop: 12, gap: 6 }}>
-                  <Text style={[styles.mono, { color: PALETTE.accent }]}>
-                    {tr("Как Longy работает на вашу цель", "How Longy works toward your goal")}
-                  </Text>
-                  {lg.bullets.map((b, i) => (
-                    <View key={i} style={{ flexDirection: "row", gap: 6 }}>
-                      <Text style={{ color: PALETTE.accent, fontSize: FS.body }}>·</Text>
-                      <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.5, flex: 1 }}>
-                        {b}
-                      </Text>
-                    </View>
-                  ))}
-                  <Text
-                    style={{
-                      color: PALETTE.accent,
-                      fontSize: FS.body,
-                      fontWeight: "bold",
-                      marginTop: 4,
-                    }}
-                  >
-                    {lg.cta}
-                  </Text>
-                </View>
-              );
-            })()}
-          </View>
-        );
-      })()}
-
-      {(() => {
-        const imgPath = goalImagePath(answers.goal);
-        if (!imgPath) return null;
-        return (
-          <View
-            wrap={false}
-            style={{
-              marginTop: 16,
-              borderRadius: 16,
-              overflow: "hidden",
-            }}
-          >
-            <Image
-              src={imgPath}
-              style={{ width: "100%", objectFit: "cover" }}
-            />
-          </View>
-        );
-      })()}
-
       <Footer />
     </Page>
   );
 };
+
+const GoalPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
+  score,
+  answers,
+}) => (
+  <Page size="A4" style={styles.page}>
+    <Header ordinal="07" label={tr("Ваша цель", "Your goal")} />
+
+    <View wrap={false} style={{ flexDirection: "row", gap: 10 }}>
+      <View style={[styles.card, { flex: 1 }]}>
+        <Text style={styles.mono}>{tr("Ваша цель", "Your goal")}</Text>
+        <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
+          {goalLabel(answers.goal)}
+        </Text>
+      </View>
+      <View style={[styles.card, { flex: 1 }]}>
+        <Text style={styles.mono}>{tr("Трекеры", "Trackers")}</Text>
+        <Text style={{ color: PALETTE.text, marginTop: 6, fontSize: FS.label }}>
+          {answers.trackers && answers.trackers.length > 0
+            ? answers.trackers.map(trackerLabel).join(", ")
+            : tr("Пока не используете", "Not using yet")}
+        </Text>
+      </View>
+    </View>
+
+    {(() => {
+      const g = goalDomainHeadline(
+        answers.goal,
+        score.goalDomain,
+        score.goalDomainScore?.score0to100 ?? null,
+      );
+      if (!g || !score.goalDomainScore) return null;
+      const tone = g.mode === "strength" ? PALETTE.accent : PALETTE.warm;
+      return (
+        <View
+          wrap={false}
+          style={{
+            marginTop: 14,
+            borderRadius: 14,
+            padding: 14,
+            backgroundColor: "#FEF0EB",
+            borderWidth: 1,
+            borderColor: tone,
+          }}
+        >
+          <Text style={[styles.mono, { color: tone }]}>{g.label}</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "baseline",
+              gap: 8,
+              marginTop: 6,
+            }}
+          >
+            <Text style={[styles.display, { fontSize: FS.label, lineHeight: 1.2 }]}>
+              {score.goalDomainScore.label}
+            </Text>
+            <Text style={{ color: tone, fontSize: FS.body }}>
+              {score.goalDomainScore.score0to100}/100
+            </Text>
+          </View>
+          <Text
+            style={{
+              color: PALETTE.textMuted,
+              fontSize: FS.body,
+              marginTop: 6,
+              lineHeight: 1.5,
+            }}
+          >
+            {g.reason}
+          </Text>
+          {(() => {
+            const lg = longyForGoalBlock(answers.goal);
+            if (!lg) return null;
+            return (
+              <View style={{ marginTop: 12, gap: 6 }}>
+                <Text style={[styles.mono, { color: PALETTE.accent }]}>
+                  {tr("Как Longy работает на вашу цель", "How Longy works toward your goal")}
+                </Text>
+                {lg.bullets.map((b, i) => (
+                  <View key={i} style={{ flexDirection: "row", gap: 6 }}>
+                    <Text style={{ color: PALETTE.accent, fontSize: FS.body }}>·</Text>
+                    <Text style={{ color: PALETTE.text, fontSize: FS.body, lineHeight: 1.5, flex: 1 }}>
+                      {b}
+                    </Text>
+                  </View>
+                ))}
+                <Text
+                  style={{
+                    color: PALETTE.accent,
+                    fontSize: FS.body,
+                    fontWeight: "bold",
+                    marginTop: 4,
+                  }}
+                >
+                  {lg.cta}
+                </Text>
+              </View>
+            );
+          })()}
+        </View>
+      );
+    })()}
+
+    {(() => {
+      const imgPath = goalImagePath(answers.goal);
+      if (!imgPath) return null;
+      return (
+        <View
+          wrap={false}
+          style={{
+            marginTop: 16,
+            borderRadius: 16,
+            overflow: "hidden",
+          }}
+        >
+          <Image
+            src={imgPath}
+            style={{ width: "100%", objectFit: "cover" }}
+          />
+        </View>
+      );
+    })()}
+
+    <Footer />
+  </Page>
+);
 
 const HealthspanStrip: React.FC<{ score: ScoreResult }> = ({ score }) => {
   if (score.isGainBranch) return <HealthspanStripGain score={score} />;
@@ -1230,8 +1242,8 @@ const ProjectionPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ sc
     headline = tr("Сколько лет может дать каждый домен", "How many years can be gained in each domain");
     subhead =
       tr(
-        "Все 5 доменов уже на сильной базе. Ниже - гипотетический бонус, который Longy даёт через точные инструменты по каждому домену. Это не починка, а тонкая настройка.",
-        "All 5 domains are already on a strong baseline. Below is the hypothetical bonus Longy can add through precision tools in each domain. This is not repair - it is top-layer optimization.",
+        "Все 5 доменов уже на сильной базе. Ниже - гипотетический бонус, который Longy даёт через точные инструменты по каждому домену.",
+        "All 5 domains are already on a strong baseline. Below is the hypothetical bonus Longy can add through precision tools in each domain.",
       );
     headerLabel = tr("Дополнительный потенциал", "Additional upside");
   } else if (isOptimize) {
@@ -1796,6 +1808,41 @@ const LIFE_HACK_DOMAIN_LABEL: Record<DomainKey, string> = {
   habits: "Привычки",
 };
 
+// Маленькие SVG-иконки 14×14 для карточек лайфхаков.
+type LifeHackIconSpec = { d: string; mode: "fill" | "stroke" };
+const LIFE_HACK_ICON: Record<DomainKey, LifeHackIconSpec> = {
+  // полумесяц
+  sleep: { d: "M 11.5 7.5 A 5 5 0 1 1 6.5 2.5 A 3.8 3.8 0 0 0 11.5 7.5 Z", mode: "fill" },
+  // ЭКГ / линия сердечного ритма
+  stress: { d: "M 1 7 L 4 7 L 5 5 L 6.5 9.5 L 8 3 L 9 7 L 13 7", mode: "stroke" },
+  // молния / энергия
+  movement: { d: "M 8.5 1 L 3 8 L 6.5 8 L 5.5 13 L 11 6 L 7.5 6 L 9 1 Z", mode: "fill" },
+  // лист
+  nutrition: { d: "M 2 12 C 2 6 6 2 12 2 C 12 8 8 12 2 12 Z", mode: "fill" },
+  // сердце
+  habits: { d: "M 7 12 C 4 9.2 1 7 1 4.5 C 1 2.7 2.5 1.5 4 1.5 C 5.5 1.5 6.5 2.5 7 3.5 C 7.5 2.5 8.5 1.5 10 1.5 C 11.5 1.5 13 2.7 13 4.5 C 13 7 10 9.2 7 12 Z", mode: "fill" },
+};
+
+const LifeHackIcon: React.FC<{ domain: DomainKey; color: string }> = ({ domain, color }) => {
+  const spec = LIFE_HACK_ICON[domain];
+  return (
+    <Svg width={14} height={14} viewBox="0 0 14 14">
+      {spec.mode === "fill" ? (
+        <Path d={spec.d} fill={color} />
+      ) : (
+        <Path
+          d={spec.d}
+          stroke={color}
+          strokeWidth={1.4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      )}
+    </Svg>
+  );
+};
+
 const LifeHackCard: React.FC<{
   domain: DomainKey;
   hack: LifeHack;
@@ -1814,14 +1861,7 @@ const LifeHackCard: React.FC<{
     }}
   >
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <View
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: PALETTE.good,
-        }}
-      />
+      <LifeHackIcon domain={domain} color={PALETTE.good} />
       <Text style={[styles.mono, { color: PALETTE.good, flex: 1 }]}>
         {LIFE_HACK_DOMAIN_LABEL[domain].toUpperCase()}
       </Text>
@@ -1859,7 +1899,7 @@ const LifeHacksPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
   const hacks = pickFourLifeHacks(score, answers);
   return (
     <Page size="A4" style={styles.page}>
-      <Header ordinal="07" label={tr("Лайфхаки", "Life hacks")} />
+      <Header ordinal="08" label={tr("Лайфхаки", "Life hacks")} />
       <View wrap={false} style={{ gap: 8 }}>
         <View style={styles.chip}>
           <Text style={styles.chipText}>
@@ -1901,7 +1941,7 @@ const LifeHacksPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
 
 const LongyPage: React.FC<{ answers: Answers }> = () => (
   <Page size="A4" style={styles.page}>
-    <Header ordinal="08" label={tr("Как Longy справляется с этим за вас", "How Longy handles this for you")} />
+    <Header ordinal="09" label={tr("Как Longy справляется с этим за вас", "How Longy handles this for you")} />
     <View wrap={false} style={{ gap: 8 }}>
       <View style={styles.chip}>
         <Text style={styles.chipText}>{tr("Longy · Ваш AI health ассистент", "Longy · Your AI health manager")}</Text>
@@ -2200,7 +2240,7 @@ const FinalPage: React.FC<{
 
 const MethodologyPage: React.FC = () => (
   <Page size="A4" style={styles.page}>
-    <Header ordinal="09" label={tr("Методология", "Methodology")} />
+    <Header ordinal="10" label={tr("Методология", "Methodology")} />
     <View wrap={false} style={{ gap: 8 }}>
       <View style={styles.chip}>
         <Text style={styles.chipText}>{tr("Методология отчёта", "Report methodology")}</Text>

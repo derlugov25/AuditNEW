@@ -585,6 +585,42 @@ const SNIPPETS_BY_DOMAIN: Record<DomainKey, Snippet[]> = {
   habits: HABITS_SNIPPETS,
 };
 
+/** Английские заголовки карточек-ускорителей (параллель русским headline в SNIPPETS). */
+const ACCELERATOR_SNIPPET_HEADLINE_EN: Record<string, string> = {
+  "Критический недосып - меньше 5 часов": "Critical sleep debt - under 5 hours",
+  "Сон сдвинут в день - сбит режим": "Sleep shifted into the day - disrupted rhythm",
+  "Сон 5-6 ч - хронический дефицит восстановления": "5-6 hours of sleep - chronic recovery deficit",
+  "Сон чуть ниже восстановительного порога": "Sleep slightly below the recovery threshold",
+  "Сон 10+ ч - сигнал нарушения качества": "10+ hours of sleep - a signal of quality issues",
+  "Достаточно сплю, но днём клонит - скрытая проблема": "You sleep enough but feel drowsy in the day - a hidden issue",
+  "Прерывистый сон - часы есть, восстановления нет": "Fragmented sleep - hours in bed, little recovery",
+  "Позднее засыпание - сдвинутый циркадный ритм": "Late bedtime - shifted circadian rhythm",
+  "Ментальный туман большую часть недели": "Brain fog most of the week",
+  "Хронический перегруз истощает нервную систему": "Chronic overload drains the nervous system",
+  "Стабильно низкая энергия - это не норма": "Consistently low energy is not normal",
+  "Туман в голове 3-7 часов в неделю": "Brain fog 3-7 hours per week",
+  "Стресс тянет ресурс сильнее, чем кажется": "Stress pulls more from you than it feels like",
+  "Отсутствие движения - один из самых сильных факторов риска": "No movement - one of the strongest risk factors",
+  "8+ часов сидения - важно вставать и двигаться": "8+ hours sitting - important to stand up and move",
+  "Сниженная кардио-форма - самостоятельный фактор риска": "Reduced cardio fitness - a risk factor on its own",
+  "Ограниченная функциональная форма требует внимания": "Limited functional fitness needs attention",
+  "Недостаток движения накапливает дефицит здоровья": "Too little movement builds a health deficit",
+  "Движение работает против вас прямо сейчас": "Movement is working against you right now",
+  "Ежедневная ультра-обработанная еда запускает воспалительный каскад": "Daily ultra-processed food triggers an inflammatory cascade",
+  "Дефицит овощей истощает микробиом и митохондрии": "Low vegetable intake depletes the microbiome and mitochondria",
+  "Хроническая дегидратация замедляет метаболизм и мышление": "Chronic dehydration slows metabolism and thinking",
+  "Частая обработанная еда нарушает метаболизм": "Frequent processed food disrupts metabolism",
+  "Рацион работает против восстановления": "Your diet is working against recovery",
+  "Никотин ускоряет старение быстрее любого другого фактора - и это доказано сотнями исследований.":
+    "Nicotine accelerates aging faster than almost any other factor - hundreds of studies show this.",
+  "Частый алкоголь нарушает сон, гормоны и клеточное восстановление":
+    "Frequent alcohol disrupts sleep, hormones, and cellular repair",
+  "Нет безопасного порога: никотин повреждает сосуды даже эпизодически":
+    "There is no safe threshold: nicotine harms vessels even occasionally",
+  "Алкоголь 1-2 раза в неделю нарушает качество сна": "Alcohol 1-2 times a week still hurts sleep quality",
+  "Токсичные привычки ускоряют клеточное старение": "Toxic habits accelerate cellular aging",
+};
+
 // Advanced «next-level» tips for users with strong domains (score ≥ 80).
 // Не привязаны к конкретным ответам - это general optimization layer.
 interface OptimizationVariant {
@@ -679,6 +715,24 @@ const OPTIMIZATION_BY_DOMAIN: Record<DomainKey, OptimizationVariant[]> = {
       action: "Раз в год - hs-CRP, спирометрия (FEV1) и проба пульса на восстановление. Это даёт объективную картину прогресса восстановления, не только субъективное «лучше дышу».",
     },
   ],
+};
+
+const OPTIMIZATION_TITLE_EN: Record<string, string> = {
+  "Перейти от «высыпаюсь» к управляемому восстановлению": "From \"I get enough sleep\" to managed recovery",
+  "Закрепить циркадный коридор": "Lock in a circadian window",
+  "От длительности к качеству фаз": "From duration to sleep-stage quality",
+  "От управления нагрузкой к измерению устойчивости к стрессу": "From coping with load to measuring stress resilience",
+  "Перейти от реактивного восстановления к проактивному": "From reactive recovery to proactive recovery",
+  "Тонкая настройка стимуляторов": "Fine-tuning stimulants (caffeine, news, feeds)",
+  "Перейти от общей активности к целевому VO₂max": "From general activity to a VO₂max target",
+  "Защита мышечной массы как запаса прочности обмена веществ": "Protecting muscle as metabolic reserve",
+  "От объёма к восстановлению - распределение нагрузки по HRV": "From volume to recovery - pacing load with HRV",
+  "От «правильно питаюсь» к персональной метаболической карте": "From \"I eat well\" to a personal metabolic map",
+  "Микронутриентный аудит": "Micronutrient audit",
+  "Тайминг и состав, а не калории": "Timing and composition, not calories",
+  "Зафиксировать защищённый статус": "Lock in your protected baseline",
+  "Социальные триггеры - ранний контур защиты": "Social triggers - an early guardrail",
+  "Переход от «ноль» к восстановлению клеток": "From zero exposure to signs of cellular recovery",
 };
 
 export function pickOptimizationForDomain(
@@ -862,6 +916,35 @@ export function verdictLifeYearsHeadlineLines(
   return [fill(v.line1), fill(v.line2), fill(v.line3)];
 }
 
+/**
+ * Одна строка для CLI summary: «стоит» N лет / ветка gain (модель Li et al.).
+ */
+export function terminalSummaryLifestyleOneLiner(score: ScoreResult): string {
+  if (getLang() === "en") {
+    if (score.isGainBranch) {
+      const n = Math.max(1, Math.round(score.gainPotentialYears));
+      const yw = pluralEn(n, "year", "years");
+      return `You have a strong baseline - the model suggests you can still add ≈+${n} ${yw} of healthy life`;
+    }
+    const y = score.yearsLifeLostTotal;
+    if (y < 0.05) return "By the model, almost no healthy-life years are being lost";
+    const yStr = formatHeadlineYears(y);
+    const fractional = Math.abs(y - Math.round(y)) >= 0.05;
+    const yearPhrase = fractional ? `${yStr} years` : `${yStr} ${pluralEn(Math.round(y), "year", "years")}`;
+    return `Your lifestyle is "costing" you ≈${yearPhrase} of healthy life`;
+  }
+  if (score.isGainBranch) {
+    const n = Math.max(1, Math.round(score.gainPotentialYears));
+    const yw = plural(n, "год", "года", "лет");
+    return `У вас сильная база - по модели можно добрать ещё +${n} ${yw} здоровой жизни.`;
+  }
+  const y = score.yearsLifeLostTotal;
+  if (y < 0.05) return "По модели потерь здоровых лет почти нет.";
+  const Y = formatHeadlineYears(y);
+  const yw = lifeYearsUnitWord(y);
+  return `Ваш образ жизни «стоит» вам ≈${Y} ${yw} здоровой жизни`;
+}
+
 export function yearsLostLineFromDomain(d: DomainScore): string {
   const y = d.yearsLifeLost;
   // Минимальный отображаемый вклад - 0.5 года; ниже считаем малозначимым.
@@ -889,7 +972,7 @@ export function buildAccelerators(answers: Answers, score: ScoreResult): Acceler
       const opt = pickOptimizationForDomain(d.key, score, answers);
       return {
         key: d.key,
-        headline: opt.title,
+        headline: isEn ? (OPTIMIZATION_TITLE_EN[opt.title] ?? opt.title) : opt.title,
         detail: opt.body,
         yearsLostEstimate: tr(
           `${d.score0to100}/100 - выйти на следующий уровень`,
@@ -912,7 +995,9 @@ export function buildAccelerators(answers: Answers, score: ScoreResult): Acceler
 
     return {
       key: d.key,
-      headline: isEn ? `${d.label}: key growth lever` : adapted.headline,
+      headline: isEn
+        ? (ACCELERATOR_SNIPPET_HEADLINE_EN[adapted.headline] ?? `${d.label}: key growth lever`)
+        : adapted.headline,
       detail: isEn
         ? "This domain currently contributes to accelerated wear. Start with one actionable step and iterate weekly."
         : adapted.detail,
@@ -2030,13 +2115,152 @@ const LIFE_HACKS: Record<DomainKey, LifeHack[]> = {
   ],
 };
 
+const LIFE_HACKS_EN: Record<DomainKey, LifeHack[]> = {
+  sleep: [
+    {
+      title: "10 minutes of sunlight right after waking up",
+      hack: "Morning light in the first hour after waking syncs your internal clock better than any alarm system. Open the curtains and stand by the window while your coffee brews.",
+      why: "Morning light (especially direct sunlight) stops melatonin production and switches you into day mode. You'll fall asleep 15-30 minutes faster in the evening (Wams et al., Sleep 2017).",
+    },
+    {
+      title: "Socks at night - boring but it works",
+      hack: "Warm feet dilate peripheral vessels, and heat leaves your body's core. A 0.5°C drop in core temperature is the main signal to fall asleep.",
+      why: "In a study from ETH Zurich (Krauchi, Nature 1999), warming the feet shortened sleep onset by 7-15 minutes - more than most sleeping pills.",
+    },
+    {
+      title: "Don't turn on bright lights when you go to the bathroom at night",
+      hack: "If you get up at night, leave your phone in the bedroom and don't switch on bright lights. A nightlight or hallway light is enough. Otherwise your body decides morning has arrived.",
+      why: "Even a brief flash of bright light at night suppresses melatonin by 50-80% and shifts circadian timing (Zeitzer, J Physiol 2000).",
+    },
+    {
+      title: "A cool bedroom matters more than a warm blanket",
+      hack: "Ideal sleep temperature is 18-19°C. If your bedroom is warmer, deep sleep is shortened even if you don't notice waking up.",
+      why: "Body temperature has to drop to fall asleep and stay in deep sleep. A warm room interferes with this process (Okamoto-Mizuno, JPA 2012).",
+    },
+    {
+      title: "No intense emotions in the hour before bed",
+      hack: "Arguments, gripping shows, important conversations - all of them spike cortisol. Even if you go to bed right after, your body needs another 30-60 minutes to cool down.",
+      why: "Cortisol stays elevated for 60-90 minutes after a stressful event. During this window, deep sleep in the first third of the night is disrupted (Hirotsu, Sleep Sci 2015).",
+    },
+  ],
+  stress: [
+    {
+      title: "4-7-8 breathing: calms you in 60 seconds",
+      hack: "Inhale through your nose for 4 counts → hold for 7 → exhale through your mouth for 8. Repeat 4 times. You'll feel the effect by the second or third cycle.",
+      why: "A long exhale activates the calming part of the nervous system (the vagus nerve). It's the fastest way to lower heart rate and cortisol (Zaccaro, Front Hum Neurosci 2018).",
+    },
+    {
+      title: "If you get angry - drink cold water",
+      hack: "Cold liquid on your tongue activates the same nerve as slow breathing. In 30 seconds your pulse starts to drop; in 2 minutes you feel the emotion easing.",
+      why: "Diving reflex: cold contact slows the heart and reduces sympathetic tone - a technique drawn from evidence-based DBT therapy.",
+    },
+    {
+      title: "A 20-minute walk = an anti-anxiety pill",
+      hack: "A light walk in natural light eases anxiety about as strongly as common over-the-counter calmers - especially if you walk where there are trees and grass.",
+      why: "Meta-analysis of 116 studies (Schuch, Psychiatry Res 2018): the effect of walking on anxiety disorders is comparable to mild antidepressants.",
+    },
+    {
+      title: "Write your worries down - and leave them on paper",
+      hack: "Every evening, spend 5 minutes writing whatever's bothering you. No judgement, no plans, just a list. Your brain stops looping through these thoughts at night.",
+      why: "Cognitive offload works on the principle of \"clearing working memory.\" Confirmed in insomnia research (Harvey, J Sleep Res 2002).",
+    },
+    {
+      title: "Coffee only before noon",
+      hack: "Caffeine stays in your bloodstream for 6-8 hours. A cup at 4 PM is still active caffeine at midnight. Morning coffee is fine; afternoon coffee steals your sleep.",
+      why: "Caffeine's half-life is about 5 hours. Even when you don't \"feel\" it, blood levels stay high enough to block adenosine receptors (Drake, JCSM 2013).",
+    },
+  ],
+  movement: [
+    {
+      title: "A 10-minute walk after meals",
+      hack: "Right after eating, walk for 10 minutes at any pace. Blood sugar rises far less than if you sat or lay down.",
+      why: "Walking muscles take up glucose from the blood without insulin. After meals this cuts the sugar peak by 30-40% (Buffey et al., Sports Med 2022).",
+    },
+    {
+      title: "Stairs instead of the elevator - that's already a workout",
+      hack: "Climbing 5 flights ≈ 1 minute of MVPA. Three times a day, and over a week you cover the WHO recommendation.",
+      why: "In Allison et al. (Atherosclerosis 2017), short bursts of 1-2 minutes deliver about 70% of the VO₂max benefit of longer training.",
+    },
+    {
+      title: "Stand for 2 minutes every hour",
+      hack: "Set a timer. Every hour - stand up, get water, stand by the window. No need to walk or do squats. Just standing.",
+      why: "Prolonged sitting drops lipoprotein lipase activity (the enzyme that processes fats) by 90%. Any interruption restores it (Hamilton, Diabetes 2007).",
+    },
+    {
+      title: "5 squats before each meal",
+      hack: "An invisible habit with a big payoff. Before eating - 5 squats. Post-meal sugar rises more gently.",
+      why: "Any large-muscle activity 15 minutes before a meal improves insulin sensitivity for the next 2 hours (Heden, Med Sci Sports Exerc 2014).",
+    },
+    {
+      title: "30 seconds of dead hangs a day",
+      hack: "Just hang from a pull-up bar (or a doorway, a horizontal beam) for 30 seconds once a day. No gym, no programs. You can train grip and back muscles while your phone charges.",
+      why: "Every 5 kg of grip strength = -16% mortality risk (Leong, Lancet 2015). Hangs are the fastest way to build it.",
+    },
+  ],
+  nutrition: [
+    {
+      title: "Vegetables first on your plate",
+      hack: "If several dishes are on the table - eat vegetables and protein first, carbs last. Same volume, same composition, but blood sugar rises twice as gently.",
+      why: "The order \"volume → fiber → protein → carbs\" slows glucose absorption by 30-50% (Shukla, Diabetes Care 2015).",
+    },
+    {
+      title: "A glass of water 15 minutes before eating",
+      hack: "Not during, not after. Specifically 10-15 minutes before the meal. It reduces appetite for the next 30-60 minutes - you'll naturally eat less.",
+      why: "In an RCT with older adults (Davy et al., Obesity 2008), this practice led to -2 kg over 12 weeks with no other dietary changes.",
+    },
+    {
+      title: "A protein breakfast closes the day's hunger",
+      hack: "If you have at least 25 g of protein at breakfast (3 eggs, cottage cheese, chicken), you'll eat noticeably less in the evening - without willpower.",
+      why: "Morning protein stabilizes ghrelin (the hunger hormone) for the whole day and reduces sweet cravings by evening (Leidy, Am J Clin Nutr 2013).",
+    },
+    {
+      title: "Swap one of your favorite sweets for dark chocolate",
+      hack: "70%+ cocoa isn't \"sweet\" in the usual sense. One or two squares after a meal kill the dessert craving and provide flavonoids and magnesium.",
+      why: "In Engler (J Am Coll Nutr 2004), daily small amounts of dark chocolate improved vascular function within 2 weeks.",
+    },
+    {
+      title: "Cook a double portion - enough for two days",
+      hack: "When you cook, cook twice as much. Half today, half tomorrow. This kills the \"need to eat right now\" feeling - the main reason ultra-processed food sneaks in.",
+      why: "Meal prep is the strongest behavioral factor for healthy eating over the long run (Ducrot, Int J Behav Nutr Phys Act 2017).",
+    },
+  ],
+  habits: [
+    {
+      title: "A glass of water between glasses of wine",
+      hack: "If you drink, have a glass of plain water between each alcoholic drink. It cuts your total alcohol dose for the evening by about a third and almost fully removes the hangover.",
+      why: "Alcohol is a diuretic; dehydration amplifies all its negative effects. Parallel hydration is the simplest defense (Verster, Curr Drug Abuse Rev 2010).",
+    },
+    {
+      title: "No alcohol after 9 PM",
+      hack: "If you simply stop drinking in the second half of the evening, your sleep gets 20-30% deeper. Same amount of alcohol, but earlier - much less harm.",
+      why: "Alcohol in your bloodstream during sleep blocks REM. If it's metabolized before you fall asleep, the block lifts (Pietilä, JMIR Ment Health 2018).",
+    },
+    {
+      title: "Friends smoking? Step away for 5 minutes",
+      hack: "If everyone around you is smoking, move away. Decline the company, not the person. In 5 minutes the situation changes - and you stayed clean.",
+      why: "Social nicotine is the strongest factor in relapse. Physical distance cuts the urge by 60% in 5 minutes (Shiffman, Addict Behav 2002).",
+    },
+    {
+      title: "Count days, not cigarettes",
+      hack: "Not \"how many I smoked today,\" but \"how many days I haven't smoked.\" The brain is wired so that a growing counter motivates more strongly than counting failures.",
+      why: "Gain framing vs loss framing - a core principle of cognitive-behavioral therapy (Gainsford, Addict Behav 2018).",
+    },
+    {
+      title: "\"I'm not refusing, I'm postponing\"",
+      hack: "When you crave a cigarette or a drink, don't say \"no.\" Say \"in 15 minutes.\" 70% of the time you no longer want it after the 15 minutes pass.",
+      why: "The technique is called \"urge surfing\": the urge comes as a wave and falls. If you ride out the peak, it passes by itself (Bowen, Addict Behav 2007).",
+    },
+  ],
+};
+
 export function pickLifeHack(
   domain: DomainKey,
   score: ScoreResult,
   answers: Answers,
 ): LifeHack {
   const seed = variantSeed(score, answers) + "|hack:" + domain;
-  return pickVariant(LIFE_HACKS[domain], seed);
+  const arr = getLang() === "en" ? LIFE_HACKS_EN[domain] : LIFE_HACKS[domain];
+  return pickVariant(arr, seed);
 }
 
 export type LifeHacksFour = Pick<Record<DomainKey, LifeHack>, "sleep" | "stress" | "movement" | "nutrition">;

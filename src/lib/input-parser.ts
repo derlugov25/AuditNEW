@@ -602,10 +602,23 @@ function resolveByText(qNum: number, raw: string): string | null {
 }
 
 function splitMultiTokens(rest: string): string[] {
-  return rest
-    .split(/[;,]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const out: string[] = [];
+  let buf = "";
+  let depth = 0;
+  for (const ch of rest) {
+    if (ch === "(" || ch === "[") depth++;
+    else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+    if (depth === 0 && (ch === "," || ch === ";")) {
+      const t = buf.trim();
+      if (t) out.push(t);
+      buf = "";
+      continue;
+    }
+    buf += ch;
+  }
+  const last = buf.trim();
+  if (last) out.push(last);
+  return out;
 }
 
 // Минимальный обязательный набор. Q24 (талия), Q26 (имя), Q28 (telegram) - необязательные.
