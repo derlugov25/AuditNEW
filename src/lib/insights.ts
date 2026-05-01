@@ -864,7 +864,8 @@ export function verdictLifeYearsHeadlineLines(
 
 export function yearsLostLineFromDomain(d: DomainScore): string {
   const y = d.yearsLifeLost;
-  if (y < 0.05) return tr("около 0 лет по шкале отчёта", "about 0 years on this model scale");
+  // Минимальный отображаемый вклад - 0.5 года; ниже считаем малозначимым.
+  if (y < 0.5) return tr("Менее 0.5 года - незначительный вклад", "Less than 0.5 year - negligible contribution");
   return tr(
     `Минус ≈${y.toFixed(1)} ${lifeYearsUnitWord(y)} здоровой жизни`,
     `Minus ≈${y.toFixed(1)} ${pluralEn(Math.round(y), "year", "years")} of healthy life`,
@@ -1187,8 +1188,8 @@ export function goalDomainHeadline(
       "Sleep sets the ceiling for this goal: recovery, hormones, and load tolerance. Without it, other efforts deliver only 30-40% of potential.",
     ),
     movement: tr(
-      "Активность напрямую определяет, достижима ли цель без застоев и спадов энергии.",
-      "Movement capacity directly determines whether you can reach this goal without plateaus.",
+      "Уровень физической активности напрямую влияет на устойчивость движения к цели и уровень энергии.",
+      "Your physical activity level directly affects how steadily you progress toward the goal and how stable your energy is.",
     ),
     nutrition: tr(
       "Без понятного режима питания остальные усилия дают 20-30% от возможного - это первый шаг.",
@@ -1245,8 +1246,8 @@ export function getLongyFeatures(): LongyFeature[] {
     title: tr("Ваша команда экспертов", "Your expert team"),
     tagline: tr("Четыре специалиста в одном приложении", "Four specialists in one app"),
     description: tr(
-      "Сертифицированный менеджер здоровья, AI-нутрициолог, AI-коуч, AI-терапевт работают вместе - видят полную картину и дают согласованные рекомендации. Не нужно собирать советы из разных источников и гадать, что важнее.",
-      "AI nutrition coach, AI performance coach, AI therapist, and health manager work together as one team, giving coordinated recommendations from a full-picture view.",
+      "Сертифицированный менеджер здоровья, AI-нутрициолог, AI-тренер, AI-терапевт работают вместе - видят полную картину и дают согласованные рекомендации. Не нужно собирать советы из разных источников и гадать, что важнее.",
+      "AI nutrition coach, AI trainer, AI therapist, and health manager work together as one team, giving coordinated recommendations from a full-picture view.",
     ),
     why: tr("Обычно за это платят 4 специалистам. Здесь - всё в одном месте, каждый день.", "What usually requires four separate specialists is combined here in one daily workflow."),
   },
@@ -1254,8 +1255,8 @@ export function getLongyFeatures(): LongyFeature[] {
     title: tr("Ежедневный план", "Daily plan"),
     tagline: tr("План, который переписывается каждое утро", "A plan rewritten every morning"),
     description: tr(
-      "AI-коуч смотрит на ваши HRV, сон и стресс за ночь — и обновляет план на день: когда тренироваться, что есть, когда ложиться спать. Никаких жёстких расписаний.",
-      "The AI coach reads your nightly HRV, sleep, and stress signals and rewrites your day plan: training timing, meals, and sleep window, without rigid schedules.",
+      "AI-тренер смотрит на ваши HRV, сон и стресс за ночь — и обновляет план на день: когда тренироваться, что есть, когда ложиться спать. Никаких жёстких расписаний.",
+      "The AI trainer reads your nightly HRV, sleep, and stress signals and rewrites your day plan: training timing, meals, and sleep window, without rigid schedules.",
     ),
     why: tr(
       "Обычные программы дают 20% результата - они не учитывают, что организм отличается каждый день. Dynamic Protocol поднимает отдачу в 3-4 раза.",
@@ -1609,7 +1610,7 @@ export const LONGY_UNDER_GOAL: Record<
     bullets: [
       "План тренировок под ваши возможности - без поиска «идеальной программы»",
       "Следим, хватает ли вам белка и восстановления, по данным с часов — без подсчёта граммов в каждом блюде",
-      "AI-коуч смотрит на ваше восстановление за ночь и подсказывает: сегодня тяжёлая тренировка, а завтра - лёгкая",
+      "AI-тренер смотрит на ваше восстановление за ночь и подсказывает: сегодня тяжёлая тренировка, а завтра - лёгкая",
     ],
     cta: "За 8 недель - прирост силы и сухой массы без выгорания",
   },
@@ -1731,7 +1732,7 @@ export const EIGHT_WEEK_PROMISE: Record<DomainKey, EightWeekBundle[]> = {
   habits: [
     [
       "Находим конкретные триггеры: что запускает желание",
-      "AI-коуч в моменте предлагает альтернативу - не «запрет», а замену",
+      "AI-тренер в моменте предлагает альтернативу - не «запрет», а замену",
       "Трекинг чистых дней без навязчивости",
     ],
     [
@@ -1754,7 +1755,7 @@ export const EIGHT_WEEK_PROMISE: Record<DomainKey, EightWeekBundle[]> = {
     [
       "Базовая аэробная работа 3 раза в неделю + 1 силовой день - минимум для долголетия",
       "Замер VO₂max через часы или лестничный тест - динамика видна за 6 недель",
-      "AI-коуч следит за прогрессом, чтобы тренироваться ровно столько, сколько нужно",
+      "AI-тренер следит за прогрессом, чтобы тренироваться ровно столько, сколько нужно",
     ],
     [
       "От «делаю - не делаю» к структурированной неделе с микро-целями",

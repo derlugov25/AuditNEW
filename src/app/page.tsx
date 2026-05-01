@@ -74,7 +74,7 @@ export default function LandingPage() {
         <div className="mt-16 border-t border-white/5 pt-10 flex flex-col md:flex-row gap-8 md:items-center md:justify-between">
           <p className="text-white/50 max-w-xl leading-relaxed">
             Longy работает с данными Whoop, Oura, Apple Watch, Garmin и умных весов. Внутри -
-            AI-нутрициолог, AI-коуч, AI-терапевт и health manager, которые видят полную картину.
+            AI-нутрициолог, AI-тренер, AI-терапевт и health manager, которые видят полную картину.
           </p>
           <div className="flex flex-wrap gap-2">
             {["Whoop", "Oura", "Apple Watch", "Garmin", "Strava"].map((t) => (

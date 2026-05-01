@@ -552,8 +552,6 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
               {"\n"}
               <Text style={{ color: PALETTE.accent }}>{T.cover.headlineAccent}</Text>
               {T.cover.headlineLine2}
-              {"\n"}
-              {T.cover.headlineLine3}
             </>
           )}
         </Text>
@@ -1021,9 +1019,6 @@ const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
           </Text>
           <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>{tr("лет возможно получить", "years can be gained")}</Text>
         </View>
-        <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, marginTop: 4 }}>
-          {tr("сейчас у вас", "you currently have")} +{years.toFixed(1)} {tr("из максимальных", "out of max")} +{max}
-        </Text>
       </View>
 
       <View style={{ flex: 1 }}>
@@ -1879,8 +1874,8 @@ const LifeHacksPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
         </Text>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480 }}>
           {tr(
-            "Не глобальные перемены, а маленькие хитрости. Каждая с научным основанием - но без сложных слов.",
-            "Not big changes - just small tricks. Each one is grounded in research, without the jargon.",
+            "Большие перемены пугают и срываются. Эти - встроятся в день незаметно, но дадут результат.",
+            "Big overhauls feel scary and fall apart. These slip into your day quietly - but still move the needle.",
           )}
         </Text>
       </View>
@@ -1916,8 +1911,8 @@ const LongyPage: React.FC<{ answers: Answers }> = () => (
       </Text>
       <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480, lineHeight: 1.4 }}>
         {tr(
-          "Longy объединяет данные с Whoop, Oura, Apple Watch, Garmin и многих других девайсов. Внутри работают сертифицированный менеджер здоровья, а также такие программы как AI-нутрициолог, AI-коуч, AI-терапевт - одновременно.",
-          "Longy unifies data from Whoop, Oura, Apple Watch, Garmin, and more. Inside the app, AI nutrition coach, AI performance coach, AI therapist, and health manager work together in one loop.",
+          "Longy объединяет данные с Whoop, Oura, Apple Watch, Garmin и многих других девайсов. Внутри работают сертифицированный менеджер здоровья, а также такие программы как AI-нутрициолог, AI-тренер, AI-терапевт - одновременно.",
+          "Longy unifies data from Whoop, Oura, Apple Watch, Garmin, and more. Inside the app, AI nutrition coach, AI trainer, AI therapist, and health manager work together in one loop.",
         )}
       </Text>
     </View>
@@ -1982,7 +1977,7 @@ const FinalPage: React.FC<{
   answers: Answers;
 }> = () => {
   const bullets: { text: string; bold?: boolean }[] = [
-    { text: tr("Команда: Сертифицированный менеджер здоровья, AI-нутрициолог + AI-спортивный тренер + AI-терапевт - работают вместе", "AI team: nutrition coach + performance coach + therapist + health manager working together") },
+    { text: tr("Команда: Сертифицированный менеджер здоровья, AI-нутрициолог + AI-тренер + AI-терапевт - работают вместе", "AI team: nutrition coach + trainer + therapist + health manager working together") },
     { text: tr("План, который подстраивается под ваше состояние каждый день", "A plan that adapts to your daily state") },
     { text: tr("Главная цель + 3 приоритета на сегодня - не список на 20 пунктов", "One primary goal + 3 priorities for today, not a 20-item checklist") },
     { text: tr("Тренировки под ваш уровень и восстановление", "Training matched to your level and recovery") },
