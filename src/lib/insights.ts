@@ -31,13 +31,10 @@ export type ReportTone = "optimize" | "fix" | "recover";
  *   recover  - образ жизни заметно ускоряет старение (risk/critical)
  */
 export function reportTone(score: ScoreResult): ReportTone {
-  const { longyScoreBand, yearsLifeLostTotal } = score;
-  if (longyScoreBand === "risk" || longyScoreBand === "critical") return "recover";
-  if (
-    (longyScoreBand === "excellent" || longyScoreBand === "good") &&
-    yearsLifeLostTotal < 1
-  )
-    return "optimize";
+  // Тон строго по longyScore - совпадает с isGainBranch (≥90 → optimize)
+  // и нижней границей risk/critical (<50 → recover).
+  if (score.longyScore < 50) return "recover";
+  if (score.longyScore >= 90) return "optimize";
   return "fix";
 }
 
@@ -863,57 +860,44 @@ const HEADLINE_VARIANTS: Record<HeadlineKey, HeadlineLines[]> = {
  */
 export function verdictLifeYearsHeadlineLines(
   score: ScoreResult,
-  answers: Answers,
+  _answers: Answers,
 ): string[] | null {
-  if (getLang() === "en") {
-    if (score.isGainBranch) {
-      const n = Math.max(1, Math.round(score.gainPotentialYears));
+  // Две ветки строго по longyScore (через isGainBranch ≥ 90):
+  //   gain (90+)  → "У вас крепкая база / Можно добрать ещё +N..."
+  //   loss (<90)  → "Ваш образ жизни «стоит» вам / ≈N лет / но это обратимо"
+  if (score.isGainBranch) {
+    const n = Math.max(4, Math.round(score.gainPotentialYears));
+    if (getLang() === "en") {
       return [
         "Your baseline is already strong",
         `You can still gain about +${n} healthy years`,
-        "through precision optimization on top of lifestyle habits",
+        "through precision data and fine-tuning",
       ];
     }
-    const y = score.yearsLifeLostTotal;
-    if (y < 0.05) return null;
+    const yw = plural(n, "год", "года", "лет");
     return [
-      "Your current lifestyle is costing healthy years",
-      `Estimated impact: about ${y.toFixed(1)} years`,
-      "The top levers are reversible within the next 8-12 weeks",
+      "У вас крепкая база",
+      `Можно добрать ещё +${n} ${yw} здоровой жизни`,
+      "через данные с устройств и точные настройки",
     ];
   }
+
   const y = score.yearsLifeLostTotal;
-  const seed = variantSeed(score, answers);
-
-  let key: HeadlineKey;
-  let n: number;
-  let yw: string;
-
-  if (score.isGainBranch) {
-    n = Math.max(1, Math.round(score.gainPotentialYears));
-    yw = plural(n, "год", "года", "лет");
-    key =
-      score.longyScoreBand === "excellent"
-        ? "gain-excellent"
-        : score.longyScoreBand === "good"
-          ? "gain-good"
-          : "gain-other";
-  } else {
-    if (y < 0.05) return null;
-    n = Math.round(y * 10) / 10;
-    yw = lifeYearsUnitWord(y);
-    key = `loss-${score.longyScoreBand}` as HeadlineKey;
+  if (y < 0.05) return null;
+  const yFmt = formatHeadlineYears(y);
+  if (getLang() === "en") {
+    return [
+      "Your lifestyle is costing you",
+      `≈${yFmt} ${pluralEn(Math.round(y), "year", "years")} of healthy life`,
+      "but it is reversible",
+    ];
   }
-
-  const variants = HEADLINE_VARIANTS[key];
-  const v = pickVariant(variants, seed);
-  const N = String(n);
-  const Y = formatHeadlineYears(y);
-
-  const fill = (s: string) =>
-    s.replace("{N}", N).replace("{Y}", Y).replace("{YW}", yw);
-
-  return [fill(v.line1), fill(v.line2), fill(v.line3)];
+  const yw = lifeYearsUnitWord(y);
+  return [
+    "Ваш образ жизни «стоит» вам",
+    `≈${yFmt} ${yw} здоровой жизни`,
+    "— но это обратимо",
+  ];
 }
 
 /**
@@ -931,7 +915,7 @@ export function terminalSummaryLifestyleOneLiner(score: ScoreResult): string {
     const yStr = formatHeadlineYears(y);
     const fractional = Math.abs(y - Math.round(y)) >= 0.05;
     const yearPhrase = fractional ? `${yStr} years` : `${yStr} ${pluralEn(Math.round(y), "year", "years")}`;
-    return `Your lifestyle is "costing" you ≈${yearPhrase} of healthy life`;
+    return `Your lifestyle is "costing" you ≈${yearPhrase} of healthy life - but it is reversible`;
   }
   if (score.isGainBranch) {
     const n = Math.max(1, Math.round(score.gainPotentialYears));
@@ -942,7 +926,7 @@ export function terminalSummaryLifestyleOneLiner(score: ScoreResult): string {
   if (y < 0.05) return "По модели потерь здоровых лет почти нет.";
   const Y = formatHeadlineYears(y);
   const yw = lifeYearsUnitWord(y);
-  return `Ваш образ жизни «стоит» вам ≈${Y} ${yw} здоровой жизни`;
+  return `Ваш образ жизни «стоит» вам ≈${Y} ${yw} здоровой жизни - но это обратимо`;
 }
 
 export function yearsLostLineFromDomain(d: DomainScore): string {

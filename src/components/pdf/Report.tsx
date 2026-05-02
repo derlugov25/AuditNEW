@@ -20,7 +20,6 @@ import {
   AcceleratorInsight,
   ProtectorInsight,
   MaintenanceTip,
-  getLongyFeatures,
   goalLabel,
   longyScoreLabel,
   goalDomainHeadline,
@@ -43,7 +42,7 @@ import {
   LifeHack,
 } from "@/lib/insights";
 import { Answers } from "@/lib/types";
-import { T, formatReportDate, formatAge, tr } from "@/lib/i18n";
+import { T, formatReportDate, formatAge, tr, pluralRu, pluralEn } from "@/lib/i18n";
 
 const ReportDateContext = React.createContext<string>("");
 
@@ -248,7 +247,7 @@ export const Report: React.FC<ReportProps> = ({
         <RadarPage score={score} protectors={protectors} />
         <GoalPage score={score} answers={answers} />
         <LifeHacksPage score={score} answers={answers} />
-        <LongyPage answers={answers} />
+        <LongyPage answers={answers} score={score} />
         <FinalPage name={name} score={score} answers={answers} />
         <MethodologyPage />
       </Document>
@@ -1097,8 +1096,9 @@ const AcceleratorsPage: React.FC<{
   accelerators: AcceleratorInsight[];
   score: ScoreResult;
 }> = ({ accelerators, score }) => {
-  const isOptimizing =
-    score.longyScoreBand === "excellent" || score.longyScoreBand === "good";
+  // Совпадает с isGainBranch (longyScore ≥ 90), чтобы вердикт «У вас крепкая
+  // база / +N лет» не противоречил странице ускорителей.
+  const isOptimizing = score.isGainBranch;
 
   return (
     <Page size="A4" style={styles.page}>
@@ -1939,77 +1939,317 @@ const LifeHacksPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({
   );
 };
 
-const LongyPage: React.FC<{ answers: Answers }> = () => (
+const ESCAPE_VELOCITY_BREAKTHROUGHS: { title: string; body: string; cite: string }[] = [
+  {
+    title: "Клеточное перепрограммирование",
+    body: "Команда Дэвида Синклера в Harvard вернула зрение старым мышам, частично сбросив эпигенетический возраст сетчатки. Altos Labs привлекла $3 млрд на масштабирование на ткани и органы.",
+    cite: "Lu et al., Nature 2020",
+  },
+  {
+    title: "Senolytics — препараты против «старых» клеток",
+    body: "Дазатиниб + кверцетин в клиническом испытании снизили нагрузку senescent-клеток у пожилых пациентов с диабетической болезнью почек. Mayo Clinic ведёт >15 параллельных trials.",
+    cite: "Hickson et al., EBioMedicine 2019",
+  },
+  {
+    title: "AlphaFold + AI-driven discovery",
+    body: "DeepMind открыл структуру 200+ млн белков. Insilico Medicine довела полностью AI-разработанный препарат до Phase 2 за 30 месяцев против стандартных 84.",
+    cite: "Ren et al., Nat Biotech 2024",
+  },
+  {
+    title: "Ксенотрансплантация и биопечать",
+    body: "Свиная почка успешно пересажена живому человеку (NYU Langone, март 2024). Свиное сердце — пациенту в Maryland (2022). Прогноз FDA — first-line одобрения в горизонте 5–10 лет.",
+    cite: "Locke et al., NEJM 2024",
+  },
+];
+
+const LongyPage: React.FC<{ answers: Answers; score: ScoreResult }> = ({ answers, score }) => {
+  const baseYears = score.isGainBranch
+    ? score.gainPotentialYears
+    : score.yearsLifeLostTotal;
+  const n = Math.max(1, Math.round(baseYears));
+  const yearsWordRu = pluralRu(n, "год", "года", "лет");
+  const yearsWordEn = pluralEn(n, "year", "years");
+
+  // Возрастная проекция (если возраст известен).
+  const rawAge =
+    typeof answers.age === "number" ? answers.age : Number(answers.age);
+  const age = Number.isFinite(rawAge) && rawAge > 0 ? Math.round(rawAge) : null;
+
+  // Базовые значения: текущая ожидаемая продолжительность жизни ~80,
+  // с темпом Oeppen & Vaupel (≈3 мес/год) +4-5 лет за оставшийся горизонт,
+  // с прорывами +15 лет, с LEV - открытый верхний предел (визуально 130).
+  const baseLE = 80;
+  const traj = age
+    ? {
+        none: baseLE,
+        trend2024: baseLE + 4,
+        breakthroughs: baseLE + 15,
+        lev: 130,
+      }
+    : null;
+
+  // Шкала бара: от 50 до 130 лет (визуально лучше различает разницу).
+  const BAR_MIN = 50;
+  const BAR_MAX = 130;
+  const widthPct = (y: number) =>
+    Math.min(100, Math.max(0, ((y - BAR_MIN) / (BAR_MAX - BAR_MIN)) * 100));
+
+  const PROJECTION_ROWS = traj
+    ? [
+        { label: tr("Без действий", "Without action"), years: traj.none, value: `~${traj.none}`, color: PALETTE.textFaint },
+        { label: tr("С темпом роста 2026", "With 2026 trend"), years: traj.trend2024, value: `~${traj.trend2024}`, color: PALETTE.lime },
+        { label: tr("С медицинскими прорывами", "With medical breakthroughs"), years: traj.breakthroughs, value: `${traj.breakthroughs}+`, color: PALETTE.amber },
+        { label: tr("С Longevity Escape Velocity *", "With Longevity Escape Velocity *"), years: traj.lev, value: "∞", color: PALETTE.accent },
+      ]
+    : [];
+
+  return (
   <Page size="A4" style={styles.page}>
-    <Header ordinal="09" label={tr("Как Longy справляется с этим за вас", "How Longy handles this for you")} />
-    <View wrap={false} style={{ gap: 8 }}>
+    <Header ordinal="09" label={tr("Эффект эскалации", "Escape velocity")} />
+
+    {/* HERO: маленькое +N → огромное +50 */}
+    <View wrap={false} style={{ gap: 6 }}>
       <View style={styles.chip}>
-        <Text style={styles.chipText}>{tr("Longy · Ваш AI health ассистент", "Longy · Your AI health manager")}</Text>
+        <Text style={styles.chipText}>
+          {tr("Почему это важно", "Why this matters")}
+        </Text>
       </View>
-      <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.15 }]}>
-        {tr("Три вещи, которых нет больше\nни в одном приложении", "Three things no other app combines")}
+      <Text style={[styles.display, { fontSize: FS.headline, lineHeight: 1.1 }]}>
+        {tr("Самый дорогой риск - не успеть до прорыва науки.", "The costliest risk is not making it in time for the science breakthrough.")}
       </Text>
-      <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, maxWidth: 480, lineHeight: 1.4 }}>
+    </View>
+
+    <View
+      wrap={false}
+      style={{
+        marginTop: 6,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      {/* Левая колонка: +N сегодня */}
+      <View style={{ alignItems: "center", minWidth: 70 }}>
+        <Text style={[styles.mono, { color: PALETTE.textFaint }]}>
+          {tr("сегодня", "today")}
+        </Text>
+        <Text
+          style={{
+            fontFamily: "Geist",
+            fontWeight: 700,
+            fontSize: 30,
+            color: PALETTE.text,
+            lineHeight: 1,
+            letterSpacing: -1.2,
+            marginTop: 2,
+          }}
+        >
+          +{n}
+        </Text>
+        <Text style={{ fontSize: 9, color: PALETTE.textMuted, marginTop: 1 }}>
+          {tr(yearsWordRu, yearsWordEn)}
+        </Text>
+      </View>
+
+      {/* Стрелка между числами */}
+      <View style={{ flex: 1, alignItems: "center", gap: 2 }}>
+        <Text style={[styles.mono, { color: PALETTE.textFaint, textAlign: "center" }]}>
+          {tr("через медицинские прорывы", "through medical breakthroughs")}
+        </Text>
+        <Svg width={180} height={12} viewBox="0 0 180 12">
+          <Path
+            d="M 0 6 L 170 6 M 162 1 L 173 6 L 162 11"
+            stroke={PALETTE.accent}
+            strokeWidth={1.5}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+        <Text style={{ fontSize: 7.5, color: PALETTE.textFaint, textAlign: "center", lineHeight: 1.2 }}>
+          reprogramming · senolytics · AI discovery · xeno · mRNA
+        </Text>
+      </View>
+
+      {/* Правая колонка: +50 потенциал, ОГРОМНОЕ */}
+      <View style={{ alignItems: "center", minWidth: 100 }}>
+        <Text style={[styles.mono, { color: PALETTE.accent }]}>
+          {tr("потенциал", "potential")}
+        </Text>
+        <Text
+          style={{
+            fontFamily: "Geist",
+            fontWeight: 700,
+            fontSize: 60,
+            color: PALETTE.accent,
+            lineHeight: 1,
+            letterSpacing: -2.5,
+            marginTop: 1,
+          }}
+        >
+          +50
+        </Text>
+        <Text style={{ fontSize: 9, color: PALETTE.accent, marginTop: 1, fontWeight: 600 }}>
+          {tr("лет здоровой жизни", "years of healthy life")}
+        </Text>
+      </View>
+    </View>
+
+    {/* ПЕРСОНАЛЬНАЯ ПРОЕКЦИЯ ПО ВОЗРАСТУ */}
+    {traj && (
+      <View wrap={false} style={{ marginTop: 10, gap: 4 }}>
+        <Text style={styles.mono}>
+          {tr(
+            `ВАМ СЕЙЧАС ${age}. ПО ТЕКУЩИМ ТРАЕКТОРИЯМ ВЫ ДОЖИВЁТЕ ДО:`,
+            `YOU ARE ${age} NOW. CURRENT TRAJECTORIES TAKE YOU TO:`,
+          )}
+        </Text>
+        <View style={{ gap: 3, marginTop: 2 }}>
+          {PROJECTION_ROWS.map((row) => (
+            <View
+              key={row.label}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Text
+                style={{
+                  width: 170,
+                  fontSize: 9.5,
+                  color: PALETTE.textMuted,
+                }}
+              >
+                {row.label}
+              </Text>
+              <View
+                style={{
+                  flex: 1,
+                  height: 10,
+                  backgroundColor: "#F0F0F0",
+                  borderRadius: 5,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    width: `${widthPct(row.years)}%`,
+                    height: 10,
+                    backgroundColor: row.color,
+                    borderRadius: 5,
+                  }}
+                />
+              </View>
+              <Text
+                style={{
+                  width: 36,
+                  textAlign: "right",
+                  fontSize: row.value === "∞" ? 18 : 10,
+                  lineHeight: row.value === "∞" ? 1 : undefined,
+                  fontWeight: 700,
+                  color: row.color === PALETTE.textFaint ? PALETTE.text : row.color,
+                }}
+              >
+                {row.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    )}
+
+    {/* КАРТОЧКИ ПРОРЫВОВ - сжато (без wrap=false на контейнере) */}
+    <View style={{ marginTop: 6, gap: 3 }}>
+      <Text style={styles.mono}>
+        {tr("Что уже работает в лабораториях", "What is already working in labs")}
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 3 }}>
+        {ESCAPE_VELOCITY_BREAKTHROUGHS.map((b) => (
+          <View
+            key={b.title}
+            wrap={false}
+            style={[
+              styles.card,
+              { width: "49.4%", padding: 5, gap: 0, borderRadius: 8 },
+            ]}
+          >
+            <Text style={[styles.display, { fontSize: 9, lineHeight: 1.1 }]}>
+              {b.title}
+            </Text>
+            <Text style={{ color: PALETTE.text, fontSize: 7.5, lineHeight: 1.25, marginTop: 1 }}>
+              {b.body}
+            </Text>
+            <Text style={{ color: PALETTE.textFaint, fontSize: 6.5, marginTop: 1 }}>
+              {b.cite}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+
+    {/* CLOSING - расширенный нарратив */}
+    <View style={{ marginTop: 8, gap: 6, width: "100%" }}>
+      <Text
+        style={{
+          color: PALETTE.text,
+          fontSize: 9.5,
+          lineHeight: 1.45,
+        }}
+      >
         {tr(
-          "Longy объединяет данные с Whoop, Oura, Apple Watch, Garmin и многих других девайсов. Внутри работают сертифицированный менеджер здоровья, а также такие программы как AI-нутрициолог, AI-тренер, AI-терапевт - одновременно.",
-          "Longy unifies data from Whoop, Oura, Apple Watch, Garmin, and more. Inside the app, AI nutrition coach, AI trainer, AI therapist, and health manager work together in one loop.",
+          "Логика longevity escape velocity проста: первая рабочая терапия не обязана решить всё. Достаточно, если она купит человеку время до следующей, более сильной волны медицины. Aubrey de Grey ещё в 2004 году описывал сценарий, в котором первые терапии могли бы дать около 20 дополнительных лет, чтобы дождаться следующего поколения вмешательств.",
+          "The logic of longevity escape velocity is simple: the first working therapy does not have to solve everything. It is enough if it buys time until the next, stronger wave of medicine. Aubrey de Grey described in 2004 a scenario where the first therapies could give about 20 additional years - enough to reach the next generation of interventions.",
+        )}
+      </Text>
+      <Text
+        style={{
+          width: "100%",
+          color: PALETTE.accent,
+          fontSize: 11,
+          fontWeight: "bold",
+          lineHeight: 1.35,
+          textAlign: "center",
+        }}
+      >
+        {tr(
+          "Поэтому Longy - не про красивый wellness.\nLongy - про время.",
+          "That is why Longy is not about pretty wellness.\nLongy is about time.",
+        )}
+      </Text>
+      <Text
+        style={{
+          color: PALETTE.text,
+          fontSize: 9.5,
+          lineHeight: 1.45,
+        }}
+      >
+        {tr(
+          "Про то, чтобы сохранить вам окно в 5-10 лет, которое завтра может конвертироваться не просто в ещё несколько лет жизни, а в доступ к медицине, способной прибавлять уже десятки лет. Даже в доклинических моделях комбинированные геропротекторные подходы уже давали около 27-30% прибавки к жизни - не как обещание для человека, а как сильный сигнал того, куда движется наука.",
+          "About preserving your 5-10 year window, which tomorrow may convert not into just a few more years of life, but into access to medicine capable of adding decades. Even in preclinical models, combined geroprotective approaches have already shown about 27-30% lifespan extension - not as a promise to humans, but as a strong signal of where the science is heading.",
         )}
       </Text>
     </View>
 
-    <View style={{ marginTop: 12, gap: 8 }}>
-      {getLongyFeatures().map((f, i) => (
-        <View
-          key={f.title}
-          wrap={false}
-          style={[
-            styles.card,
-            { flexDirection: "row", gap: 12, padding: 14 },
-          ]}
-        >
-          <View style={{ width: 40 }}>
-            <Text
-              style={[
-                styles.display,
-                { fontSize: FS.headline, color: PALETTE.accent, lineHeight: 1 },
-              ]}
-            >
-              0{i + 1}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.display, { fontSize: FS.label }]}>{f.title}</Text>
-            <Text style={{ color: PALETTE.accent, fontSize: FS.caption, marginTop: 3 }}>
-              {f.tagline}
-            </Text>
-            <Text
-              style={{
-                color: PALETTE.textMuted,
-                fontSize: FS.body,
-                marginTop: 6,
-                lineHeight: 1.45,
-              }}
-            >
-              {f.description}
-            </Text>
-            <Text
-              style={{
-                color: PALETTE.textFaint,
-                fontSize: FS.caption,
-                marginTop: 6,
-                lineHeight: 1.4,
-              }}
-            >
-              {f.why}
-            </Text>
-          </View>
-        </View>
-      ))}
-    </View>
+    {/* Сноска LEV */}
+    <Text
+      style={{
+        marginTop: 8,
+        color: PALETTE.textFaint,
+        fontSize: 7.5,
+        lineHeight: 1.35,
+      }}
+    >
+      {tr(
+        "* Longevity Escape Velocity (LEV) — момент, когда прирост ожидаемой жизни от технологий превышает 1 год за календарный год. Концепция: de Grey, Aging Cell 2007. Прогнозы экспертов: 2030–2040 (Kurzweil), 2035–2045 (de Grey).",
+        "* Longevity Escape Velocity (LEV) — the moment when life-expectancy gains from technology exceed 1 year per calendar year. Concept: de Grey, Aging Cell 2007. Expert estimates: 2030–2040 (Kurzweil), 2035–2045 (de Grey).",
+      )}
+    </Text>
 
     <Footer />
   </Page>
-);
+  );
+};
 
 const FinalPage: React.FC<{
   name: string;

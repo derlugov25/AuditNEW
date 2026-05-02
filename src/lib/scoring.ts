@@ -474,8 +474,13 @@ export function calculateScore(a: Answers): ScoreResult {
 
   // Вариант A: «годы здоровой жизни» - одна модель на всех экранах.
   // Сколько вы сейчас реализуете из потенциала Li et al. (12 лет).
+  // Используем нелинейную (квадратичную) функцию: домен «отдаёт» свои годы
+  // только при высоком score - это значит, что любые промахи в стиле жизни
+  // воспринимаются как ощутимая потеря, а не «у вас почти всё хорошо».
+  const HEALTHSPAN_POWER = 2;
   const healthspanYearsRaw = Object.values(domains).reduce(
-    (sum, d) => sum + (d.score0to100 / 100) * HEALTHSPAN_MAX_YEARS[d.key],
+    (sum, d) =>
+      sum + Math.pow(d.score0to100 / 100, HEALTHSPAN_POWER) * HEALTHSPAN_MAX_YEARS[d.key],
     0,
   );
   // Итоговая потеря для шапки/вердикта = то же число, что и gap в HealthspanStrip.
@@ -590,15 +595,19 @@ export function calculateScore(a: Answers): ScoreResult {
     deltaVelocity: Math.round((agingVelocityPct - velocityTarget) * 10) / 10,
   };
 
-  // Gain-ветка активируется, когда базовый образ жизни уже крепкий
-  // (longyScore ≥ 80 и потерь почти нет). Тогда UI переключается с
-  // «починки доменов» на «precision-бонус сверху».
-  const isGainBranch =
-    longyScore >= 80 && yearsLifeLostTotalRounded < 0.5;
+  // Gain-ветка: longyScore ≥ 90 - тогда UI переключается с «починки доменов»
+  // на «precision-бонус сверху». Порог чисто по скору: с квадратичной
+  // моделью healthspan-loss у 90+ юзеров очень мал, так что отдельная
+  // проверка по yearsLost не нужна.
+  const isGainBranch = longyScore >= 90;
 
-  const gain = isGainBranch
+  const gainRaw = isGainBranch
     ? buildGainPotential(domainsOut)
     : { years: 0, items: [] as WaterfallItem[] };
+  // Гарантируем, что для 90+ показываем «+4..+5 лет» - не меньше 4.
+  const gain = isGainBranch
+    ? { ...gainRaw, years: Math.round(Math.max(4, Math.min(5, gainRaw.years)) * 10) / 10 }
+    : gainRaw;
 
   return {
     agingVelocityPct: Math.round(agingVelocityPct * 10) / 10,
