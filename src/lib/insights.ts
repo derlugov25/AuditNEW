@@ -1,6 +1,6 @@
 import { DomainKey, DomainScore, ScoreResult, computeSleepHours } from "./scoring";
 import { Answers, ConditionKey } from "./types";
-import { getLang, pluralEn, pluralRu, tr } from "./i18n";
+import { getLang, pluralEn, pluralRu, tr, healthyYearsUnitRu, healthyYearsUnitEn } from "./i18n";
 
 export interface AcceleratorInsight {
   key: DomainKey;
@@ -1302,10 +1302,7 @@ function plural(n: number, one: string, few: string, many: string): string {
 }
 
 function lifeYearsUnitWord(y: number): string {
-  const r = Math.round(y * 10) / 10;
-  const whole = Math.round(r);
-  if (Math.abs(r - whole) < 0.05) return plural(whole, "год", "года", "лет");
-  return "лет";
+  return getLang() === "en" ? healthyYearsUnitEn(y) : healthyYearsUnitRu(y);
 }
 
 function formatHeadlineYears(y: number): string {
@@ -1449,7 +1446,7 @@ export function yearsLostLineFromDomain(d: DomainScore): string {
   if (y < 0.5) return tr("Менее 0.5 года - незначительный вклад", "Less than 0.5 year - negligible contribution");
   return tr(
     `Минус ≈${y.toFixed(1)} ${lifeYearsUnitWord(y)} здоровой жизни`,
-    `Minus ≈${y.toFixed(1)} ${pluralEn(Math.round(y), "year", "years")} of healthy life`,
+    `Minus ≈${y.toFixed(1)} ${healthyYearsUnitEn(y)} of healthy life`,
   );
 }
 
@@ -1755,7 +1752,7 @@ export function coverSubtitle(score: ScoreResult): string {
     const gain = Math.max(1, Math.round(score.gainPotentialYears));
     switch (band) {
       case "excellent":
-        return `Вы идёте лучше большинства людей вашего возраста. Ниже - где можно добрать ещё ~${gain} лет здоровой жизни вместе с Longy.`;
+        return `Вы идёте лучше большинства людей вашего возраста. Ниже - где можно добрать ещё ~${gain} ${healthyYearsUnitRu(gain)} здоровой жизни вместе с Longy.`;
       case "good":
         return "У вас уже есть крепкая база по всем ключевым факторам. Показываем, где Longy может усилить результат за счёт точечных инсайтов.";
       default:

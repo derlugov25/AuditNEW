@@ -43,7 +43,17 @@ import {
   LifeHack,
 } from "@/lib/insights";
 import { Answers } from "@/lib/types";
-import { T, formatReportDate, formatAge, tr, pluralRu, pluralEn } from "@/lib/i18n";
+import {
+  T,
+  formatReportDate,
+  formatAge,
+  tr,
+  pluralRu,
+  pluralEn,
+  getLang,
+  healthyYearsUnitRu,
+  healthyYearsUnitEn,
+} from "@/lib/i18n";
 
 const ReportDateContext = React.createContext<string>("");
 
@@ -64,6 +74,9 @@ const goalImagePath = (goal: string): string | null => {
   const file = GOAL_IMAGE[goal];
   return file ? imagePath(file) : null;
 };
+
+/** RU «год/года/лет» или EN year/years рядом с числом. */
+const yUnit = (y: number) => tr(healthyYearsUnitRu(y), healthyYearsUnitEn(y));
 
 Font.register({
   family: "Geist",
@@ -663,7 +676,8 @@ const CoverPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ score, 
                     <Text
                       style={{ color: PALETTE.accent, marginTop: 8, fontSize: FS.body }}
                     >
-                      +{(topGain?.yearsLost ?? 0).toFixed(1)} {tr("лет потенциал", "years potential")}
+                      +{(topGain?.yearsLost ?? 0).toFixed(1)} {yUnit(topGain?.yearsLost ?? 0)}{" "}
+                      {tr("потенциала", "potential")}
                     </Text>
                   </View>
                 );
@@ -1053,14 +1067,17 @@ const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
   const fillPct = Math.max(0, Math.min(1, years / max));
   const gapColor =
     gap >= 5 ? PALETTE.danger : gap >= 3 ? PALETTE.warm : gap >= 1.5 ? PALETTE.amber : PALETTE.accent;
+  const uYears = healthyYearsUnitRu(years);
+  const uMax = healthyYearsUnitRu(max);
+  const uGap = healthyYearsUnitRu(gap);
   const narrative =
     gap < 1
       ? tr(
-          `Ваш образ жизни уже даёт почти максимум - +${years.toFixed(1)} из возможных +${max} здоровых лет.* Отчёт показывает, где можно добрать остальное.`,
+          `Ваш образ жизни уже даёт почти максимум — +${years.toFixed(1)} ${uYears} из возможных +${max} ${uMax}.* Отчёт показывает, где можно добрать остальное.`,
           `Your lifestyle already realizes most of its potential: +${years.toFixed(1)} out of +${max} healthy years.* This report highlights where to capture the remaining upside.`,
         )
       : tr(
-          `Идеальный образ жизни по 5 факторам даёт до +${max} дополнительных здоровых лет.* Сейчас у вас +${years.toFixed(1)} — ещё на +${gap} можно продлить.`,
+          `Идеальный образ жизни по 5 факторам даёт до +${max} ${uMax} здоровой жизни.* Сейчас у вас +${years.toFixed(1)} ${uYears} — ещё на +${gap} ${uGap} можно продлить.`,
           `An ideal lifestyle across 5 factors can add up to +${max} healthy years.* You currently realize +${years.toFixed(1)} - about +${gap} remain in reserve.`,
         );
 
@@ -1072,7 +1089,9 @@ const HealthspanStripLoss: React.FC<{ score: ScoreResult }> = ({ score }) => {
           <Text style={[styles.numStat, { fontSize: FS.display, color: gapColor }]}>
             +{gap.toFixed(1)}
           </Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>{tr("лет возможно получить", "years can be gained")}</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>
+            {getLang() === "en" ? "years can be gained" : `${healthyYearsUnitRu(gap)} возможно получить`}
+          </Text>
         </View>
       </View>
 
@@ -1108,7 +1127,9 @@ const HealthspanStripGain: React.FC<{ score: ScoreResult }> = ({ score }) => {
           <Text style={[styles.numStat, { fontSize: FS.display, color: PALETTE.accent }]}>
             +{gain}
           </Text>
-          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>{tr("лет можно добрать", "years can be added")}</Text>
+          <Text style={{ color: PALETTE.textFaint, fontSize: FS.body }}>
+            {getLang() === "en" ? "years can be added" : `${healthyYearsUnitRu(gain)} можно добрать`}
+          </Text>
         </View>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.caption, marginTop: 4 }}>
           {tr("сверх 12-летнего healthspan Li et al.", "above the +12-year Li et al. healthspan model")}
@@ -1118,7 +1139,7 @@ const HealthspanStripGain: React.FC<{ score: ScoreResult }> = ({ score }) => {
       <View style={{ flex: 1 }}>
         <Text style={{ color: PALETTE.textMuted, fontSize: FS.body, lineHeight: 1.5 }}>
           {tr(
-            `Ваш образ жизни уже работает на вас - 12 лет healthspan по Li et al. в кармане.* Дальше Longy подключает данные с устройств, нутригенетику и маркеры воспаления, чтобы добрать ещё ~${gain} лет через precision-настройку.`,
+            `Ваш образ жизни уже работает на вас - 12 лет healthspan по Li et al. в кармане.* Дальше Longy подключает данные с устройств, нутригенетику и маркеры воспаления, чтобы добрать ещё ~${gain} ${healthyYearsUnitRu(gain)} через precision-настройку.`,
             `Your lifestyle baseline is already working in your favor. The +12-year Li et al. healthspan model is largely realized.* Next, Longy uses wearable data, nutrigenetics, and inflammation markers to unlock about ~${gain} more years through precision tuning.`,
           )}
         </Text>
@@ -1294,7 +1315,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ sc
     chipLabel = tr("Реализованный потенциал", "Realized potential");
     headline = tr("Сколько здоровых лет вы уже набираете", "How many healthy years you already realize");
     subhead = tr(
-      `Healthspan-модель даёт до +${score.healthspanMax} лет за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)}.`,
+      `Healthspan-модель даёт до +${score.healthspanMax} ${healthyYearsUnitRu(score.healthspanMax)} за идеальный образ жизни. Вы сейчас набираете +${score.healthspanYears.toFixed(1)} ${healthyYearsUnitRu(score.healthspanYears)}.`,
       `The Healthspan model gives up to +${score.healthspanMax} years for an ideal lifestyle. You are currently realizing +${score.healthspanYears.toFixed(1)}.`,
     );
     headerLabel = tr("Реализованный потенциал", "Realized potential");
@@ -1338,7 +1359,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ sc
           <>
             <Text style={styles.mono}>
               {tr(
-                `Потенциал · +${score.gainPotentialYears.toFixed(1)} лет можно добрать`,
+                `Потенциал · +${score.gainPotentialYears.toFixed(1)} ${healthyYearsUnitRu(score.gainPotentialYears)} можно добрать`,
                 `Potential · +${score.gainPotentialYears.toFixed(1)} years can be gained`,
               )}
             </Text>
@@ -1358,7 +1379,7 @@ const ProjectionPage: React.FC<{ score: ScoreResult; answers: Answers }> = ({ sc
           <>
             <Text style={styles.mono}>
               {tr(
-                `График-водопад · ≈${score.yearsLifeLostTotal.toFixed(1)} лет здоровой жизни`,
+                `График-водопад · ≈${score.yearsLifeLostTotal.toFixed(1)} ${healthyYearsUnitRu(score.yearsLifeLostTotal)} здоровой жизни`,
                 `Waterfall · ≈${score.yearsLifeLostTotal.toFixed(1)} healthy years`,
               )}
             </Text>
@@ -1472,8 +1493,8 @@ const RealizedPotentialBlock: React.FC<{ score: ScoreResult }> = ({ score }) => 
 
   const monoLabel =
     gap < 0.5
-      ? `Потерь здоровых лет по модели почти не видно - +${years.toFixed(1)} из ${max}`
-      : `Небольшой резерв здоровых лет - +${years.toFixed(1)} из ${max}, ещё +${gap.toFixed(1)} можно вернуть`;
+      ? `Потерь здоровых лет по модели почти не видно - +${years.toFixed(1)} ${healthyYearsUnitRu(years)} из ${max}`
+      : `Небольшой резерв здоровых лет - +${years.toFixed(1)} ${healthyYearsUnitRu(years)} из ${max}, ещё +${gap.toFixed(1)} ${healthyYearsUnitRu(gap)} можно вернуть`;
 
   return (
     <View>
@@ -1661,7 +1682,7 @@ const GainGrid: React.FC<{ score: ScoreResult }> = ({ score }) => {
                   {shortLabelFor(it.key, it.label)}
                 </Text>
                 <Text style={{ color: PALETTE.accent, fontSize: FS.label, fontWeight: "bold" }}>
-                  +{it.yearsLost.toFixed(1)} лет
+                  +{it.yearsLost.toFixed(1)} {healthyYearsUnitRu(it.yearsLost)}
                 </Text>
               </View>
               <Text
@@ -2170,7 +2191,7 @@ const LongyPage: React.FC<{ answers: Answers; score: ScoreResult }> = ({ answers
             +50
           </Text>
           <Text style={{ fontSize: 9, color: PALETTE.accent, marginTop: 2, fontWeight: 600 }}>
-            {tr("лет здоровой жизни", "years of healthy life")}
+            {tr(`${healthyYearsUnitRu(50)} здоровой жизни`, "years of healthy life")}
           </Text>
         </View>
       </View>
@@ -2433,27 +2454,27 @@ const FinalPage: React.FC<{
           }}
         >
           {tr(
-            "Ваша модель здоровья построена.\nМы готовы начинать работу.",
-            "Your health model is built.\nWe are ready to begin.",
+            "Ваша модель здоровья уже в Longy.\nСкачайте приложение и запустите персональную систему движения к вашей цели.",
+            "Your health model is already in Longy.\nDownload the app and start your personalized system on the path to your goal.",
           )}
         </Text>
 
-        {/* Intro: three short paragraphs — compact type so the card clears the footer band */}
+        {/* Intro: below headline (3–4 lines @ 22pt) — do not overlap */}
         <Text
           style={{
             position: "absolute",
-            top: 142,
+            top: 204,
             left: 40,
             width: 515,
-            fontSize: 9.5,
-            lineHeight: 1.36,
+            fontSize: 10.5,
+            lineHeight: 1.38,
             textAlign: "center",
             color: PALETTE.text,
           }}
         >
           {tr(
-            "Большинство людей в вашем возрасте не знают свой Health Score. Не знают, какой фактор крадёт у них больше всего здоровых лет.\n\nВы теперь знаете. И это меняет правила: с этого момента каждый вечер - это выбор. Лечь в 23:00 или нет. Открыть Longy или нет. Действовать на основе данных или вернуться к интуиции.\n\nПрофиль уже в приложении. Команда ждёт. Сегодня - первый день, в который вы можете перестать терять годы и начать их возвращать.",
-            "Most people your age do not know their Health Score. They do not know which factor is costing them the most healthy years.\n\nYou do now. That changes the rules: from this moment on, every evening is a choice. Bed at 11:00 p.m. or not. Open Longy or not. Act on data or fall back on intuition.\n\nYour profile is already in the app. The team is waiting. Today can be the first day you stop losing years and start getting them back.",
+            "Это не повтор отчёта. Longy уже собрал для вас первые шаги, ежедневный фокус и рекомендации AI агентов. Система адаптируется под ваше состояние и помогает двигаться каждый день.",
+            "This is not a recap of the report. Longy has already pulled together your first steps, daily focus, and AI agent recommendations. The system adapts to how you feel and helps you move forward every day.",
           )}
         </Text>
 
@@ -2461,7 +2482,7 @@ const FinalPage: React.FC<{
         <View
           style={{
             position: "absolute",
-            top: 290,
+            top: 260,
             left: 33,
             width: 530,
             height: 485,
@@ -2488,7 +2509,7 @@ const FinalPage: React.FC<{
           <View
             style={{
               position: "absolute",
-              top: 20,
+              top: 8,
               left: 255,
               width: 262,
             }}
@@ -2500,13 +2521,13 @@ const FinalPage: React.FC<{
                 fontWeight: 600,
                 letterSpacing: -0.3,
                 color: PALETTE.text,
-                marginBottom: 16,
+                marginBottom: 12,
               }}
             >
               {tr("Что ждёт вас в приложении:", "What awaits you in the app:")}
             </Text>
 
-            <View style={{ gap: 8, marginBottom: 18 }}>
+            <View style={{ gap: 8, marginBottom: 14 }}>
               {bullets.map((b, i) => (
                 <View key={i} style={{ flexDirection: "row", gap: 6 }}>
                   <Text
@@ -2742,7 +2763,7 @@ const DomainRow = ({ domain }: { domain: DomainScore }) => {
           <Text style={{ color: PALETTE.text, fontSize: FS.body }}>{domain.label}</Text>
           <Text style={{ color: PALETTE.textFaint, fontSize: FS.caption, marginTop: 2 }}>
             {tr(
-              `≈${domain.yearsLifeLost.toFixed(1)} лет в модели`,
+              `≈${domain.yearsLifeLost.toFixed(1)} ${healthyYearsUnitRu(domain.yearsLifeLost)} в модели`,
               `≈${domain.yearsLifeLost.toFixed(1)} years in model`,
             )}
           </Text>
@@ -3043,7 +3064,7 @@ const WaterfallSvg = ({
               }}
             >
               {yv > 0 ? "+" : ""}
-              {yv.toFixed(1)} {tr("лет", "years")}
+              {yv.toFixed(1)} {getLang() === "en" ? healthyYearsUnitEn(yv) : healthyYearsUnitRu(yv)}
             </Text>
             <Text
               style={{
@@ -3075,7 +3096,8 @@ const WaterfallSvg = ({
             fontWeight: 700,
           }}
         >
-          {mode === "gain" ? "+" : "≈"}{totalYears.toFixed(1)} {tr("лет", "years")}
+          {mode === "gain" ? "+" : "≈"}
+          {totalYears.toFixed(1)} {getLang() === "en" ? healthyYearsUnitEn(totalYears) : healthyYearsUnitRu(totalYears)}
         </Text>
         <Text
           style={{

@@ -69,6 +69,51 @@ type Dict = {
   };
 };
 
+export function pluralRu(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+/** «год / года / лет» после числа лет (в т.ч. дробного): 2 года, 5 лет, 0,5 года, 1,2 года. */
+export function healthyYearsUnitRu(years: number): string {
+  const abs = Math.abs(years);
+  const whole = Math.round(abs);
+  const isWhole = Math.abs(abs - whole) < 1e-6;
+  if (isWhole) return pluralRu(whole, "год", "года", "лет");
+  const ip = Math.floor(abs + 1e-9);
+  if (ip === 0) return "года";
+  if (ip === 1) return "года";
+  return pluralRu(ip, "год", "года", "лет");
+}
+
+export function healthyYearsUnitEn(years: number): string {
+  const abs = Math.abs(years);
+  const whole = Math.round(abs);
+  if (Math.abs(abs - whole) < 1e-6) return whole === 1 ? "year" : "years";
+  return "years";
+}
+
+function coverYearsOfLifePhrase(years: string): string {
+  const y = Number.parseFloat(String(years).replace(",", "."));
+  const n = Number.isFinite(y) ? y : 0;
+  if (_CURRENT_LANG === "en") {
+    const whole = Math.round(Math.abs(n));
+    const frac = Math.abs(n - whole) >= 0.05;
+    const w = frac ? "years" : whole === 1 ? "year" : "years";
+    return `≈${years} ${w} of healthy life`;
+  }
+  return `≈${years} ${healthyYearsUnitRu(n)} здоровой жизни`;
+}
+
+export function formatYears(n: number): string {
+  const rounded = Number.isInteger(n) ? n : Number(n.toFixed(1));
+  if (_CURRENT_LANG === "en") return `${rounded} ${rounded === 1 ? "year" : "years"}`;
+  return `${rounded} ${healthyYearsUnitRu(rounded)}`;
+}
+
 const DICT: Record<Lang, Dict> = {
   ru: {
     header: {
@@ -110,7 +155,7 @@ const DICT: Record<Lang, Dict> = {
       mainDriver: "Главный драйвер",
       strongestSupport: "Ваша сильнейшая опора",
       mainDriverEmpty: "-",
-      yearsOfLife: (years) => `≈${years} лет здоровой жизни`,
+      yearsOfLife: (years) => coverYearsOfLifePhrase(years),
       topPercent: (n) => `Вы в верхней ${n}% среди ровесников по Longy Health Score`,
       percentileChip: "Ранг по Longy Health Score",
     },
@@ -164,7 +209,7 @@ const DICT: Record<Lang, Dict> = {
       mainDriver: "Main driver",
       strongestSupport: "Your strongest pillar",
       mainDriverEmpty: "-",
-      yearsOfLife: (years) => `≈${years} years of healthy life`,
+      yearsOfLife: (years) => coverYearsOfLifePhrase(years),
       topPercent: (n) => `You are in the top ${n}% among peers by Longy Health Score`,
       percentileChip: "Your rank vs peers",
     },
@@ -206,21 +251,6 @@ export function plural(
 ): string {
   if (_CURRENT_LANG === "en") return pluralEn(n, en.one, en.many);
   return pluralRu(n, ru.one, ru.few, ru.many);
-}
-
-// Стандартное «X лет» / «X years».
-export function formatYears(n: number): string {
-  const rounded = Number.isInteger(n) ? n : Number(n.toFixed(1));
-  if (_CURRENT_LANG === "en") return `${rounded} ${pluralEn(rounded, "year", "years")}`;
-  return `${rounded} ${pluralRu(Math.round(rounded), "год", "года", "лет")}`;
-}
-
-export function pluralRu(n: number, one: string, few: string, many: string): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
 }
 
 export function formatAge(age: number): string {

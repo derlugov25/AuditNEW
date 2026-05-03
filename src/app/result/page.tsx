@@ -20,6 +20,7 @@ import {
 } from "@/lib/insights";
 import { Speedometer } from "@/components/Speedometer";
 import { RadarChart } from "@/components/RadarChart";
+import { healthyYearsUnitRu, tr, getLang, pluralEn } from "@/lib/i18n";
 
 const STORAGE_KEY = "longy_audit_answers_v2";
 
@@ -50,13 +51,15 @@ export default function ResultPage() {
     return (
       <main className="min-h-screen vignette grid place-items-center px-6">
         <div className="card p-10 max-w-lg text-center">
-          <h1 className="display text-3xl">Нужно пройти опрос</h1>
+          <h1 className="display text-3xl">{tr("Нужно пройти опрос", "Take the quiz first")}</h1>
           <p className="mt-3 text-white/60">
-            Мы не нашли сохранённых ответов. Пройдите опрос, чтобы получить персональный
-            аудит.
+            {tr(
+              "Мы не нашли сохранённых ответов. Пройдите опрос, чтобы получить персональный аудит.",
+              "We didn't find any saved answers. Take the quiz to get your personal audit.",
+            )}
           </p>
           <Link href="/quiz" className="btn-primary mt-6">
-            Начать
+            {tr("Начать", "Start")}
           </Link>
         </div>
       </main>
@@ -88,7 +91,10 @@ export default function ResultPage() {
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error(e);
-      alert("Не удалось сформировать PDF. Попробуйте ещё раз.");
+      alert(tr(
+        "Не удалось сформировать PDF. Попробуйте ещё раз.",
+        "Failed to generate the PDF. Please try again.",
+      ));
     } finally {
       setDownloading(false);
     }
@@ -110,7 +116,9 @@ export default function ResultPage() {
           disabled={downloading}
           className="btn-primary disabled:opacity-60"
         >
-          {downloading ? "Готовим PDF…" : "Скачать PDF-отчёт"}
+          {downloading
+            ? tr("Готовим PDF…", "Preparing PDF…")
+            : tr("Скачать PDF-отчёт", "Download PDF report")}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path
               d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
@@ -125,7 +133,10 @@ export default function ResultPage() {
 
       <section className="relative z-10 px-6 md:px-12 pb-24 max-w-6xl mx-auto">
         <div className="flex flex-col gap-3">
-          <span className="chip">Ваш персональный аудит · {new Date().toLocaleDateString("ru-RU")}</span>
+          <span className="chip">
+            {tr("Ваш персональный аудит", "Your personal audit")} ·{" "}
+            {new Date().toLocaleDateString(getLang() === "en" ? "en-US" : "ru-RU")}
+          </span>
           <h1 className="max-w-5xl">
             {answers.name ? (
               <span className="display text-4xl md:text-6xl leading-[1.05] tracking-[-0.03em]">
@@ -143,7 +154,10 @@ export default function ResultPage() {
             {coverSubtitle(score)}
           </p>
           <p className="text-white/35 text-xs mt-1 tracking-wide">
-            Методология: Li et al., J Intern Med 2024 · 5 доменов · 21 параметр + хронические заболевания
+            {tr(
+              "Методология: Li et al., J Intern Med 2024 · 5 доменов · 21 параметр + хронические заболевания",
+              "Methodology: Li et al., J Intern Med 2024 · 5 domains · 21 parameters + chronic conditions",
+            )}
           </p>
         </div>
 
@@ -157,26 +171,44 @@ export default function ResultPage() {
                 <div className="text-white/40 text-xl">/ 100</div>
               </div>
               <p className="mt-4 text-white/70 leading-relaxed">
-                {longyScoreLabel(score.longyScoreBand).label}. Ниже — три главных фактора и
-                что с ними делать.
+                {longyScoreLabel(score.longyScoreBand).label}.{" "}
+                {tr(
+                  "Ниже — три главных фактора и что с ними делать.",
+                  "Below — three main factors and what to do about them.",
+                )}
               </p>
             </div>
           </div>
 
           <div className="card p-8">
             <div className="mono text-xs text-white/50">
-              {score.isGainBranch ? "ГЛАВНАЯ ТОЧКА РОСТА" : "ГЛАВНЫЙ ДРАЙВЕР"}
+              {score.isGainBranch
+                ? tr("ГЛАВНАЯ ТОЧКА РОСТА", "MAIN GROWTH AREA")
+                : tr("ГЛАВНЫЙ ДРАЙВЕР", "MAIN DRIVER")}
             </div>
             <div className="display text-2xl mt-3 leading-tight">
               {score.topThree[0]?.label ?? "-"}
             </div>
             <div className={`mt-2 mono text-sm ${score.isGainBranch ? "text-accent-primary" : "text-accent-warm"}`}>
               {score.isGainBranch
-                ? `+${(score.gainPotentialWaterfall.find(w => w.key === score.topThree[0]?.key)?.yearsLost ?? 0).toFixed(1)} лет потенциал`
-                : `минус ~${(score.topThree[0]?.yearsLifeLost ?? 0).toFixed(1)} лет здоровой жизни`}
+                ? (() => {
+                    const y =
+                      score.gainPotentialWaterfall.find((w) => w.key === score.topThree[0]?.key)?.yearsLost ?? 0;
+                    return getLang() === "en"
+                      ? `+${y.toFixed(1)} ${pluralEn(Math.round(y), "year", "years")} potential`
+                      : `+${y.toFixed(1)} ${healthyYearsUnitRu(y)} потенциал`;
+                  })()
+                : (() => {
+                    const y = score.topThree[0]?.yearsLifeLost ?? 0;
+                    return getLang() === "en"
+                      ? `minus ~${y.toFixed(1)} ${pluralEn(Math.round(y), "year", "years")} of healthy life`
+                      : `минус ~${y.toFixed(1)} ${healthyYearsUnitRu(y)} здоровой жизни`;
+                  })()}
             </div>
             <div className="mt-6 pt-6 border-t border-white/10">
-              <div className="mono text-xs text-white/50">ИНДЕКС МАССЫ ТЕЛА</div>
+              <div className="mono text-xs text-white/50">
+                {tr("ИНДЕКС МАССЫ ТЕЛА", "BODY MASS INDEX")}
+              </div>
               <div className="display text-3xl mt-1">{score.bmi ?? "-"}</div>
               <div className="text-white/50 text-sm mt-1">{bmiLabel(score.bmiCategory)}</div>
             </div>
@@ -222,12 +254,17 @@ export default function ResultPage() {
             return (
               <>
                 <div className="mono text-xs text-accent-primary/80">
-                  {isOptimizing ? "ГДЕ МОЖНО ДОЖАТЬ" : "ТОП-3 ГЛАВНЫХ ФАКТОРА"}
+                  {isOptimizing
+                    ? tr("ГДЕ МОЖНО ДОЖАТЬ", "WHERE YOU CAN PUSH")
+                    : tr("ТОП-3 ГЛАВНЫХ ФАКТОРА", "TOP-3 MAIN FACTORS")}
                 </div>
                 <h2 className="display text-3xl md:text-4xl mt-2">
                   {isOptimizing
-                    ? "Где есть потенциал для роста"
-                    : "Что отнимает у вас годы здоровой жизни"}
+                    ? tr("Где есть потенциал для роста", "Where there's room to grow")
+                    : tr(
+                        "Что отнимает у вас годы здоровой жизни",
+                        "What's costing you years of healthy life",
+                      )}
                 </h2>
               </>
             );
@@ -238,7 +275,10 @@ export default function ResultPage() {
               return accelerators.length === 0 ? (
               <div className="card p-8 md:col-span-3">
                 <p className="text-white/70">
-                  Ни один из факторов не превышает порога риска - отличная отправная точка.
+                  {tr(
+                    "Ни один из факторов не превышает порога риска - отличная отправная точка.",
+                    "None of the factors exceed the risk threshold — an excellent starting point.",
+                  )}
                 </p>
               </div>
             ) : (
@@ -267,7 +307,7 @@ export default function ResultPage() {
                   <div className={`mt-3 mono text-sm ${isOptimizing ? "text-accent-primary" : "text-accent-warm"}`}>{acc.yearsLostEstimate}</div>
                   <p className="mt-4 text-white/65 text-sm leading-relaxed">{acc.detail}</p>
                   <div className="mt-5 rounded-2xl border border-accent-primary/25 bg-accent-primary/5 p-4">
-                    <div className="mono text-xs text-accent-primary">ЧТО ДЕЛАТЬ</div>
+                    <div className="mono text-xs text-accent-primary">{tr("ЧТО ДЕЛАТЬ", "WHAT TO DO")}</div>
                     <p className="text-white/85 text-sm mt-1 leading-relaxed">{acc.action}</p>
                   </div>
                   <p className="mt-4 text-white/35 text-xs italic">{acc.evidence}</p>
@@ -280,20 +320,28 @@ export default function ResultPage() {
 
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="card p-8">
-            <div className="mono text-xs text-white/50">5 ДОМЕНОВ</div>
-            <h3 className="display text-2xl mt-2">Карта вашего состояния</h3>
+            <div className="mono text-xs text-white/50">{tr("5 ДОМЕНОВ", "5 DOMAINS")}</div>
+            <h3 className="display text-2xl mt-2">
+              {tr("Карта вашего состояния", "Your state map")}
+            </h3>
             <div className="mt-4 grid place-items-center">
               <RadarChart domains={Object.values(score.domains)} size={320} />
             </div>
           </div>
 
           <div className="card p-8">
-            <div className="mono text-xs text-white/50">ЧТО ВАС ЗАЩИЩАЕТ</div>
-            <h3 className="display text-2xl mt-2">Ваши сильные стороны</h3>
+            <div className="mono text-xs text-white/50">
+              {tr("ЧТО ВАС ЗАЩИЩАЕТ", "WHAT PROTECTS YOU")}
+            </div>
+            <h3 className="display text-2xl mt-2">
+              {tr("Ваши сильные стороны", "Your strengths")}
+            </h3>
             {protectors.length === 0 ? (
               <p className="mt-4 text-white/60 leading-relaxed">
-                Сейчас нет доменов с уверенно защитным уровнем. Это не приговор - это просто
-                стартовая точка. Через 8 недель работы с Longy картина меняется у 86% пользователей.
+                {tr(
+                  "Сейчас нет доменов с уверенно защитным уровнем. Это не приговор - это просто стартовая точка. Через 8 недель работы с Longy картина меняется у 86% пользователей.",
+                  "No domains are currently at a clearly protective level. That's not a verdict — just a starting point. After 8 weeks with Longy, 86% of users see this picture change.",
+                )}
               </p>
             ) : (
               <div className="mt-4 space-y-3">
@@ -306,15 +354,19 @@ export default function ResultPage() {
               </div>
             )}
             <div className="mt-6 border-t border-white/10 pt-5">
-              <div className="mono text-xs text-white/50">ВАША ЦЕЛЬ</div>
+              <div className="mono text-xs text-white/50">{tr("ВАША ЦЕЛЬ", "YOUR GOAL")}</div>
               <div className="mt-1 text-white/85">{goalLabel(answers.goal)}</div>
             </div>
           </div>
         </div>
 
         <div className="mt-14">
-          <div className="mono text-xs text-accent-primary/80">КАК LONGY БЕРЁТ ЭТО НА СЕБЯ</div>
-          <h2 className="display text-3xl md:text-4xl mt-2">Три вещи, которых нет больше нигде</h2>
+          <div className="mono text-xs text-accent-primary/80">
+            {tr("КАК LONGY БЕРЁТ ЭТО НА СЕБЯ", "HOW LONGY HANDLES THIS FOR YOU")}
+          </div>
+          <h2 className="display text-3xl md:text-4xl mt-2">
+            {tr("Три вещи, которых нет больше нигде", "Three things you won't find anywhere else")}
+          </h2>
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             {getLongyFeatures().map((f: LongyFeature, i: number) => (
               <div key={f.title} className="card p-7 flex flex-col">
@@ -334,22 +386,26 @@ export default function ResultPage() {
           <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
             <div>
               <h3 className="display text-2xl md:text-3xl">
-                Скачайте полный аудит в PDF
+                {tr("Скачайте полный аудит в PDF", "Download the full audit as PDF")}
               </h3>
               <p className="text-white/60 mt-2 max-w-xl">
-                Персональный отчёт на 12 страниц: обложка, вердикт, цель, топ-3 фактора,
-                разбор по доменам, лайфхаки, сильные стороны, описание Longy и методология.
+                {tr(
+                  "Персональный отчёт на 12 страниц: обложка, вердикт, цель, топ-3 фактора, разбор по доменам, лайфхаки, сильные стороны, описание Longy и методология.",
+                  "Personal 12-page report: cover, verdict, goal, top-3 factors, per-domain breakdown, lifehacks, strengths, Longy overview, and methodology.",
+                )}
               </p>
             </div>
             <button onClick={onDownload} disabled={downloading} className="btn-primary disabled:opacity-60">
-              {downloading ? "Готовим PDF…" : "Скачать PDF"}
+              {downloading
+                ? tr("Готовим PDF…", "Preparing PDF…")
+                : tr("Скачать PDF", "Download PDF")}
             </button>
           </div>
 
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
             <div>
               <h3 className="display text-2xl md:text-3xl">
-                Получить глубокий аудит в приложении
+                {tr("Получить глубокий аудит в приложении", "Get the deep audit in the app")}
               </h3>
               <p className="text-white/60 mt-2 max-w-xl">{coverCTA(score, answers)}</p>
             </div>
@@ -359,7 +415,7 @@ export default function ResultPage() {
               rel="noopener noreferrer"
               className="btn-primary"
             >
-              Открыть приложение Longy
+              {tr("Открыть приложение Longy", "Open the Longy app")}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M5 12h14M13 6l6 6-6 6"
@@ -380,13 +436,13 @@ export default function ResultPage() {
 function bmiLabel(c: string): string {
   switch (c) {
     case "underweight":
-      return "Ниже нормы";
+      return tr("Ниже нормы", "Below normal");
     case "normal":
-      return "В норме";
+      return tr("В норме", "Normal");
     case "overweight":
-      return "Избыточный";
+      return tr("Избыточный", "Overweight");
     case "obese":
-      return "Ожирение";
+      return tr("Ожирение", "Obesity");
     default:
       return "-";
   }
