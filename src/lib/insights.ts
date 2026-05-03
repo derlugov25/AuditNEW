@@ -144,6 +144,43 @@ const CONDITION_REFRAMES: Record<ConditionKey, Partial<Record<AdviceCategory, st
   prefer_not_to_say: {},
 };
 
+const CONDITION_REFRAMES_EN: Record<ConditionKey, Partial<Record<AdviceCategory, string>>> = {
+  hypertension: {
+    caffeine: "Coffee - max 1 cup before noon, track your blood pressure afterwards",
+    hiit: "Intense cardio - only after consulting your cardiologist",
+    cold_exposure: "Contrast showers and cryotherapy - discuss with your cardiologist",
+  },
+  atherosclerosis: {
+    caffeine: "Limit coffee to 1 cup a day, monitor your blood pressure",
+    hiit: "High-intensity loads - only under medical supervision",
+    fasting: "Intermittent fasting - mandatory to clear with your doctor",
+  },
+  diabetes2: {
+    fasting: "Long fasts with diabetes - only under medical supervision",
+  },
+  autoimmune: {
+    fasting: "Long fasts with autoimmune conditions - check with your doctor",
+    cold_exposure: "Extreme temperature exposure - discuss with a specialist",
+  },
+  thyroid: {
+    supplements: "Iodine and selenium supplements - only after labs, not blindly",
+  },
+  kidney: {
+    high_protein: "Discuss your protein target with a nephrologist - the standard 1.6 g/kg may not fit you",
+    supplements: "Most supplements load the kidneys - discuss with a nephrologist",
+  },
+  cancer: {
+    fasting: "Any dietary restrictions - clear with your oncologist",
+    supplements: "All supplements - only with oncologist approval",
+    cold_exposure: "Extreme practices - clear with your treating physician",
+  },
+  bpd: {},
+  allergy: {},
+  other: {},
+  none: {},
+  prefer_not_to_say: {},
+};
+
 interface Snippet {
   match: (a: Answers) => boolean;
   headline: string;
@@ -157,9 +194,11 @@ function applyGuardrails(snippet: Snippet, conditions: ConditionKey[], barrier: 
   detail: string;
   action: string;
 } {
+  const isEn = getLang() === "en";
+  const reframeMap = isEn ? CONDITION_REFRAMES_EN : CONDITION_REFRAMES;
   const blocks = new Set(conditions.flatMap((c) => CONDITION_BLOCKS[c] ?? []));
   const reframes = conditions.flatMap((c) =>
-    Object.entries(CONDITION_REFRAMES[c] ?? {}),
+    Object.entries(reframeMap[c] ?? {}),
   );
 
   let action =
@@ -170,9 +209,15 @@ function applyGuardrails(snippet: Snippet, conditions: ConditionKey[], barrier: 
 
   if (blocks.has(snippet.category)) {
     const reframe = reframes.find(([cat]) => cat === snippet.category);
-    action = reframe
-      ? `⚠ С учётом вашего диагноза: ${reframe[1]}`
-      : "⚠ С учётом вашего диагноза: этот совет нужно согласовать с вашим врачом. В Longy подбираем альтернативу под ваш диагноз.";
+    if (isEn) {
+      action = reframe
+        ? `⚠ Given your diagnosis: ${reframe[1]}`
+        : "⚠ Given your diagnosis: this advice should be cleared with your doctor. In Longy we substitute an alternative tailored to your condition.";
+    } else {
+      action = reframe
+        ? `⚠ С учётом вашего диагноза: ${reframe[1]}`
+        : "⚠ С учётом вашего диагноза: этот совет нужно согласовать с вашим врачом. В Longy подбираем альтернативу под ваш диагноз.";
+    }
   }
 
   return { headline: snippet.headline, detail: snippet.detail, action };
@@ -574,6 +619,398 @@ const HABITS_SNIPPETS: Snippet[] = [
   },
 ];
 
+const SLEEP_SNIPPETS_EN: Snippet[] = [
+  {
+    match: (a) => { const h = computeSleepHours(a); return h !== null && h < 5; },
+    headline: "Critical sleep debt - under 5 hours",
+    detail: "Less than 5 hours of sleep is not «a bit tired». Growth hormone drops, the brain clears its own metabolic waste worse, the body handles blood sugar worse. And «catching up on weekends» does not compensate — sleep debt accumulates.",
+    actionByBarrier: {
+      time: "Tonight - to bed 30 minutes earlier. That is all.",
+      energy: "Sleep loss drains your energy. One step: phone out of the room an hour before bed.",
+      conflicting_advice: "Prather et al., Sleep 2015: at <6 h of sleep, cold risk is 4× higher. Target — 7+ h.",
+      motivation: "First win - 14 nights in a row at 6.5+ h. Mark every one.",
+      dont_know_start: "Tonight, in bed by 11 PM - and the same for 7 days in a row. After a week shift to 10:30 PM. That is enough for now.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => { const h = computeSleepHours(a); return h !== null && h >= 7 && h <= 9 && (a.bedtime === "after05" || a.bedtime === "04-05" || a.bedtime === "03-04"); },
+    headline: "Sleep shifted into the day - disrupted rhythm",
+    detail: "Even if you sleep 8 hours but go to bed after 3 AM — your internal clock is constantly off. It's like living with mild jetlag every day: metabolism, immunity and thinking all suffer.",
+    actionByBarrier: {
+      time: "Shift bedtime 15 min earlier every 3 days - that is enough.",
+      energy: "Bright light right after waking up speeds up the rhythm reset.",
+      conflicting_advice: "The sleep hormone (melatonin) is most strongly produced in darkness up to roughly 2 AM.",
+      motivation: "Every night with bedtime «before 1 AM» is a small win over jetlag.",
+      dont_know_start: "Week 1 - in bed no later than 3 AM. Week 2 - no later than 2. Week 3 - no later than 1.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => { const h = computeSleepHours(a); return h !== null && h >= 5 && h < 6; },
+    headline: "5-6 hours of sleep - chronic recovery deficit",
+    detail: "At 5-6 hours, deep sleep gets cut short — that is exactly when the body recovers and the immune system runs at full capacity. You get used to the shortage subjectively — but memory and metabolism really do suffer.",
+    actionByBarrier: {
+      time: "Add 30 min: go to bed half an hour earlier for 14 nights in a row.",
+      energy: "Sleep is the main generator of energy. 30 min invested pays back across the whole next day.",
+      conflicting_advice: "AASM, WHO, NIH all agree: 7 hours minimum for adults.",
+      motivation: "Track HRV in the morning - in 2 weeks you'll see the difference.",
+      dont_know_start: "Tonight - leave the phone outside the bedroom an hour before sleep. In 7 days you'll see the difference, then the next step.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => { const h = computeSleepHours(a); return h !== null && h >= 6 && h < 7; },
+    headline: "Sleep slightly below the recovery threshold",
+    detail: "7-9 hours is the window that fits all the needed sleep stages. At 6-7 hours the deep stage doesn't fully unfold - the body under-recovers.",
+    actionByBarrier: {
+      time: "30 min earlier in bed - and 30 min more sleep with no effort.",
+      energy: "30 minutes more sleep = 20% more energy in the first half of the day.",
+      conflicting_advice: "7 hours is the minimum consensus across all medical organizations.",
+      motivation: "14 nights of a stable schedule - and your sleep biomarkers will visibly improve.",
+      dont_know_start: "One step: bedtime 30 min earlier, change nothing else.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => { const h = computeSleepHours(a); return h !== null && h > 10; },
+    headline: "10+ hours of sleep - a signal of quality issues",
+    detail: "Sleep over 10 hours in an adult is usually a sign that the night is fragmented and the body tries to «catch up» with quantity. It's associated with elevated risk of heart problems.",
+    actionByBarrier: {
+      time: "A sleep tracker (even a phone) will show the structure in 2 weeks.",
+      energy: "The cause of fatigue is most likely in sleep quality, not duration.",
+      conflicting_advice: "Sleep length of 10+ h is not a sign of health, it's a signal to investigate.",
+      motivation: "Checking ferritin and vitamin D often changes the picture dramatically.",
+      dont_know_start: "For the next 2 weeks log your sleep in the app and note how you feel during the day.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => { const h = computeSleepHours(a); return h !== null && h >= 7 && (a.daytimeSleepiness === "9+" || a.daytimeSleepiness === "4-8"); },
+    headline: "You sleep enough but feel drowsy in the day - a hidden issue",
+    detail: "Hours of sleep look fine, but you're drowsy in the day - a signal that the night is not what it seems: maybe you wake up many times without remembering it, or there's a breathing disorder during sleep (apnea).",
+    actionByBarrier: {
+      time: "For the next 2 weeks track sleep with a wearable or app check-ins and note how you feel during the day.",
+      energy: "Daytime caffeine masks but doesn't solve. You need the cause - not the symptom.",
+      conflicting_advice: "Daytime sleepiness despite seemingly normal sleep is a medical question, not a habits one. A doctor should be involved.",
+      motivation: "Knowing the cause is half the solution. 14 nights of recording.",
+      dont_know_start: "For 14 nights turn on sleep recording (Apple Watch, Whoop, Oura, or just a phone app). If frequent awakenings or apnea show up - go to a sleep specialist. Don't brush it off.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.sleepProblems === "9+" || a.sleepProblems === "4-8",
+    headline: "Fragmented sleep - hours in bed, little recovery",
+    detail: "Trouble falling asleep or waking up at night means your body doesn't reach the deep stages. And it's exactly in those stages that the brain clears the «waste» of daily work, memory consolidates, and growth hormone is produced.",
+    actionByBarrier: {
+      time: "10-min ritual: screens off, brief 4-7-8 breathing, darkness.",
+      energy: "Fragmented sleep = constant fatigue. A bedtime ritual is the first step.",
+      conflicting_advice: "One proven step: darkness and quiet in the bedroom. Start there.",
+      motivation: "14 nights of the ritual in a row - the brain «learns» the new pattern.",
+      dont_know_start: "Step 1 - phone out of the bedroom for 7 days.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.bedtime === "01-02" || a.bedtime === "02-03",
+    headline: "Late bedtime - shifted circadian rhythm",
+    detail: "You sleep enough, but the sleep window is pushed into the night. Your internal clock is off — that creates a mild but constant background stress for hormones and the immune system.",
+    actionByBarrier: {
+      time: "Shift 15 min earlier every 3 days - no sharp discomfort.",
+      energy: "Bright light right after waking is the main anchor of the circadian rhythm.",
+      conflicting_advice: "One fact: a circadian shift = elevated risk of metabolic disorders.",
+      motivation: "Every week of shifting is a measurable HRV gain.",
+      dont_know_start: "Week 1 - bedtime 30 min earlier. Repeat until normalized.",
+    },
+    category: "general",
+  },
+];
+
+const STRESS_SNIPPETS_EN: Snippet[] = [
+  {
+    match: (a) => a.foggyHours === "40+h" || a.foggyHours === "20-40h",
+    headline: "Brain fog most of the week",
+    detail: "Constantly elevated cortisol (the main stress hormone) drives background inflammation in the body and accelerates cellular aging. 20+ hours of «brain fog» per week is a serious signal that the nervous system is burning out.",
+    actionByBarrier: {
+      time: "10 min of 4-7-8 breathing in the morning. One action, measurable effect in 2 weeks.",
+      energy: "Start from one anchor: 10 min of silence after lunch without your phone.",
+      conflicting_advice: "One proven technique: calm breathing lowers cortisol within 4 minutes.",
+      motivation: "Track fog on a 1-10 scale daily. In 2 weeks you'll see the trend.",
+      dont_know_start: "Every evening, 5 minutes — write down by hand or in notes everything spinning in your head. Don't filter. The goal is to unload thoughts onto paper.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.foggyHours === "14-20h" || a.foggyHours === "7-14h",
+    headline: "Chronic overload drains the nervous system",
+    detail: "Constantly high cortisol accelerates cellular aging. Internal inflammation wears out vessels and nerve cells faster.",
+    actionByBarrier: {
+      time: "10 min of breathing + an evening thought-dump on paper. Minimal investment.",
+      energy: "One recovery anchor a day - 15 min without tasks or screens.",
+      conflicting_advice: "One technique: 4-4-8 breathing (inhale 4 counts, hold 4, exhale 8). It engages the «calming» part of the nervous system - there's good science on this.",
+      motivation: "Stress control is a skill. The first 14 days are the most important.",
+      dont_know_start: "Step 1 - 5 min of exhale-focused meditation before bed.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.energyPattern === "mostly_low",
+    headline: "Consistently low energy is not normal",
+    detail: "Consistently low energy is a signal of one of three issues: chronic stress, sleep loss, or metabolic disturbances. Often all three at once.",
+    actionByBarrier: {
+      time: "20 min of bright morning light rebuilds the cortisol curve in 5 days.",
+      energy: "One recovery anchor: a short 20-min nap after lunch - not weakness, a method.",
+      conflicting_advice: "Vitamin D and iron deficiency are common findings in chronic fatigue (Roy et al. 2014, EJCM 2025). It's the first and cheapest diagnostic step.",
+      motivation: "Rate yourself 1-10 every morning. Trend visible in a week.",
+      dont_know_start: "Step 1 - labs: ferritin, vitamin D, TSH. No guessing.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.foggyHours === "3-7h",
+    headline: "Brain fog 3-7 hours per week",
+    detail: "Stress is still moderate - the nervous system copes, but with losses: less mental clarity, slower reactions. A good point to step in before burnout.",
+    actionByBarrier: {
+      time: "Two 5-minute pauses per day - step outside, no phone.",
+      energy: "Cut stimulants (coffee, news) in the first half of the day.",
+      conflicting_advice: "Silence is the most underrated cognitive tool.",
+      motivation: "Start with one «quiet hour» per week. Expand from there.",
+      dont_know_start: "Step 1 - a 15-min walk without headphones or phone.",
+    },
+    category: "general",
+  },
+  {
+    match: () => true,
+    headline: "Stress pulls more from you than it feels like",
+    detail: "Even moderate stress triggers background inflammation and lowers heart rate variability (HRV) - one of the earliest signals that the nervous system is overloaded.",
+    actionByBarrier: {
+      time: "5 min of breathing practice before bed.",
+      energy: "Rest is not inactivity, it's active recovery.",
+      conflicting_advice: "One simple fact: deep breathing engages the «calming» part of the nervous system in 60 seconds.",
+      motivation: "Track HRV - progress visible in 2 weeks.",
+      dont_know_start: "Step 1 - 5 min of meditation in the morning, 7 days in a row.",
+    },
+    category: "general",
+  },
+];
+
+const MOVEMENT_SNIPPETS_EN: Snippet[] = [
+  {
+    match: (a) => a.activeDays === "0",
+    headline: "No movement - one of the strongest risk factors",
+    detail: "Muscles are one of the main regulators of blood sugar. After 30, with low physical activity, a person loses on average 3-5% of muscle mass per decade — and along with it, metabolism and immune function decline.",
+    actionByBarrier: {
+      time: "Rule of 22: 22 min of walking a day - neutralizes the risks of 10 h of sitting.",
+      energy: "Start with a 10-min walk. Movement generates energy, it doesn't spend it.",
+      conflicting_advice: "One fact: 22 minutes of brisk walking a day neutralizes the harm of long sitting (Sagelv et al., BJSM 2023).",
+      motivation: "First 7 days at 10 min. Then the body itself will ask for more.",
+      dont_know_start: "Today - 10 minutes of brisk walking. Tomorrow - 12. In 2 weeks - that 22 minutes a day. No gyms, nothing to buy.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.sittingHours === "8+" && a.activeDays !== "5-7",
+    headline: "8+ hours sitting - important to stand up and move",
+    detail: "Long sitting on its own raises the risk of early death — even if your weight is normal. The good news: it's fixable without changing your job.",
+    actionByBarrier: {
+      time: "Stand up every 45 min for 5 min. A timer - and nothing else.",
+      energy: "Micro-movement every hour doesn't drain you, it restores energy.",
+      conflicting_advice: "Sagelv et al., BJSM 2023 (meta-analysis of 4 cohorts, n=11,985): 22+ min of MVPA per day neutralizes the excess mortality risk of prolonged sitting.",
+      motivation: "Mark every «stand-up» break - in a week it's a habit.",
+      dont_know_start: "Right now set a phone timer for 45 minutes. When it rings - stand up, walk around, do 10 squats. Then repeat every working hour.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.breathRecovery === "5min+_avoid" || a.breathRecovery === "3-5min",
+    headline: "Reduced cardio fitness - a risk factor on its own",
+    detail: "VO₂max (a measure of how well the body uses oxygen) is one of the strongest predictors of longevity. If your breathing takes more than 3 minutes to recover after effort - your heart and lungs are at low reserve right now.",
+    actionByBarrier: {
+      time: "10 min of light-pace walking daily already kicks off adaptation.",
+      energy: "Start with slow walking. The body itself will speed up in 2-3 weeks.",
+      conflicting_advice: "VO2max improves even from moderate walking - it's not a myth.",
+      motivation: "Measure your pulse after stairs once a week - the progression is motivating.",
+      dont_know_start: "Step 1 - 10 min of moderate-pace walking every day.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.functionalActivities.length <= 2,
+    headline: "Limited functional fitness needs attention",
+    detail: "If simple everyday actions - climbing stairs, carrying bags, squatting - feel uncomfortable, your physical form is already not in order. And it weakens unnoticed.",
+    actionByBarrier: {
+      time: "5 min of light stretching in the morning and 10 min of walking - the entry point.",
+      energy: "Functional fitness is built in small steps, not by volume.",
+      conflicting_advice: "One principle: gradual load progression without pain.",
+      motivation: "Mark every new activity that feels more comfortable.",
+      dont_know_start: "Step 1 - stairs instead of the elevator for 5 days in a row.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.activeDays === "1-2",
+    headline: "Too little movement builds a health deficit",
+    detail: "1-2 active days a week is below the WHO minimum (150 min of moderate movement). The body's reserve shrinks unnoticed.",
+    actionByBarrier: {
+      time: "Add one 20-minute walking block - in work hours or on lunch break.",
+      energy: "A third active day per week gives a disproportionate energy lift.",
+      conflicting_advice: "WHO: 150 min per week = 30% lower mortality risk.",
+      motivation: "From 2 to 3 days - the fastest gain in subjective wellbeing.",
+      dont_know_start: "Step 1 - schedule the third walk on your calendar right now.",
+    },
+    category: "general",
+  },
+  {
+    match: () => true,
+    headline: "Movement is working against you right now",
+    detail: "Lack of movement piles up quietly. Every sedentary day is a hit to the body's reserve.",
+    actionByBarrier: {
+      time: "22 min of walking a day - the minimum effective dose.",
+      energy: "Start with 10 min - the body will ask for more in a week.",
+      conflicting_advice: "Sagelv et al., BJSM 2023 (meta-analysis of 4 cohorts, n=11,985): 22+ min of MVPA per day neutralizes the excess mortality risk of prolonged sitting.",
+      motivation: "Set a 7-day goal, not a monthly one.",
+      dont_know_start: "Step 1 - 10 min walk today after dinner.",
+    },
+    category: "general",
+  },
+];
+
+const NUTRITION_SNIPPETS_EN: Snippet[] = [
+  {
+    match: (a) => a.processedFood === "daily",
+    headline: "Daily ultra-processed food triggers an inflammatory cascade",
+    detail: "Ultra-processed food (ready meals, sausages, sweet bars, soda) breaks the gut microbiome, which directly governs immunity and inflammation. High intake raises diabetes risk by 40%, heart disease by 29%, early mortality by 21% (Lane et al., BMJ 2024).",
+    actionByBarrier: {
+      time: "The third-of-a-plate rule: a third veggies, a third protein, a third grains. No calorie counting.",
+      energy: "One swap a day: a processed snack → nuts or fruit.",
+      conflicting_advice: "One principle: fewer ingredients on the label = better for the microbiome.",
+      motivation: "Replace one daily product with a whole-food one. A week in a row.",
+      dont_know_start: "Step 1 - remove one ultra-processed item from your daily menu.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.veggiesFruits === "<3_week",
+    headline: "Low vegetable intake depletes the microbiome and mitochondria",
+    detail: "Vegetables provide fiber and natural protective compounds. Without them cells produce energy worse and clear «waste» worse - and aging accelerates.",
+    actionByBarrier: {
+      time: "A handful of leaves + a tomato with any meal - 30 seconds.",
+      energy: "Veggies = food for mitochondria. Deficit = less energy at the cellular level.",
+      conflicting_advice: "3 servings of vegetables/fruit per day - the recommendation of every dietetic body.",
+      motivation: "One new vegetable in your diet each week. No pressure.",
+      dont_know_start: "Step 1 - add one vegetable serving to lunch every day.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.water === "<1l",
+    headline: "Chronic dehydration slows metabolism and thinking",
+    detail: "Even mild dehydration (a loss of about 2% of body mass) noticeably worsens attention, focus, and reaction (Wittbrodt & Millard-Stafford, 2018). Constant water shortage slows kidney function and the clearance of metabolic byproducts.",
+    actionByBarrier: {
+      time: "A glass of water in the morning and before each meal - effortless.",
+      energy: "Water - cheaper and faster than any energy drink.",
+      conflicting_advice: "1.5 L per day - the scientific minimum for adults at moderate activity.",
+      motivation: "Water tracker on your phone + a reminder every 2 hours.",
+      dont_know_start: "Step 1 - put a water bottle on your desk right now.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.processedFood === "4-6wk",
+    headline: "Frequent processed food disrupts metabolism",
+    detail: "If ultra-processed food (sausages, ready sauces, sweets, soda) is on the menu 4-6 times a week — that's already enough to consistently disrupt the gut microbiome and keep the body in background inflammation.",
+    actionByBarrier: {
+      time: "Swap one of the 4-6 occasions for something whole-food - a concrete weekly plan.",
+      energy: "Less processed food = steadier energy without crashes.",
+      conflicting_advice: "Drop from 5 to 2 times a week - a measurable goal.",
+      motivation: "Every swap - +1 to the week's healthy-eating tally.",
+      dont_know_start: "Start with one simple step: pick 1 day a week with no ultra-processed food. On that day skip sausages, sweets, soda, ready sauces and snacks.",
+    },
+    category: "general",
+  },
+  {
+    match: () => true,
+    headline: "Your diet is working against recovery",
+    detail: "A shortage of needed nutrients piles up unnoticed - it limits recovery, immunity, and clarity of thought.",
+    actionByBarrier: {
+      time: "Swap one snack a day: instead of cookies or chips - a handful of nuts or fruit.",
+      energy: "Food is fuel. Quality of fuel = quality of energy.",
+      conflicting_advice: "Three principles: whole foods, variety, enough water.",
+      motivation: "One new healthy choice per day - 30 days = a new baseline.",
+      dont_know_start: "Step 1 - replace one snack with nuts or fruit.",
+    },
+    category: "general",
+  },
+];
+
+const HABITS_SNIPPETS_EN: Snippet[] = [
+  {
+    match: (a) => a.nicotine === "regular",
+    headline: "Nicotine accelerates aging faster than almost any other factor - hundreds of studies show this.",
+    detail: "Nicotine damages the inner walls of vessels and accelerates plaque buildup. According to GBD Tobacco 2021, smoking shortens healthy life by an average of 10 years.",
+    actionByBarrier: {
+      time: "Don't «quit» all at once - replace one specific smoking situation. Two weeks - one situation.",
+      energy: "Nicotine mimics alertness, but lowers HRV and sleep quality.",
+      conflicting_advice: "Doll et al. BMJ 2004: quitting before 35 returns life expectancy to that of non-smokers.",
+      motivation: "Replace the situation with a 5-minute action. One new anchor habit.",
+      dont_know_start: "Step 1: observe yourself for 3 days - in which situations do you reach for a cigarette most often (after meals? when nervous? in company?). Step 2: for the most frequent one - design a replacement (gum, a walk around the office, a minute of breathing). Step 3: try the swap for 7 days.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.alcohol === "daily" || a.alcohol === "3-4wk",
+    headline: "Frequent alcohol disrupts sleep, hormones, and cellular repair",
+    detail: "Alcohol breaks sleep architecture (especially the stages where the brain offloads), raises the stress hormone, and gradually damages nerve cells. The more often - the stronger the effect, and not proportionally — faster.",
+    actionByBarrier: {
+      time: "One glass in the evening → a glass of water with lemon. One concrete ritual.",
+      energy: "Alcohol blocks REM sleep - hence the morning sluggishness.",
+      conflicting_advice: "WHO 2023: there is no safe level of alcohol for health.",
+      motivation: "Every alcohol-free day = better HRV the next morning.",
+      dont_know_start: "Step 1: today - a weekday with no alcohol. Step 2: in a week - add one more. Goal by week 4 - 0 weekdays with alcohol.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.nicotine === "sometimes",
+    headline: "There is no safe threshold: nicotine harms vessels even occasionally",
+    detail: "Even rare nicotine is a hit to the vessel walls each time and a step toward plaque buildup. There is no safe dose.",
+    actionByBarrier: {
+      time: "Replace one occasional ritual with a 5-minute walk.",
+      energy: "Nicotine lowers HRV - the main marker of stress resilience.",
+      conflicting_advice: "There's no safe «a little»: vessels react to every dose.",
+      motivation: "Every cigarette skipped is a concrete contribution to vessel health.",
+      dont_know_start: "Step 1: pick one situation in which you smoke most often (a Friday gathering? after a big dinner?). Just skip it this week.",
+    },
+    category: "general",
+  },
+  {
+    match: (a) => a.alcohol === "1-2wk",
+    headline: "Alcohol 1-2 times a week still hurts sleep quality",
+    detail: "Even 1-2 drinks a week break deep sleep on the night after - so the next day brings worse recovery and slower thinking.",
+    actionByBarrier: {
+      time: "Try replacing one alcoholic evening with a non-alcoholic drink - 2 weeks.",
+      energy: "A night without alcohol = better HRV in the morning.",
+      conflicting_advice: "Gardiner et al., Sleep Med Rev 2025: at 2+ drinks REM is significantly disrupted; at 1 drink the second half of the night suffers most.",
+      motivation: "Track HRV the morning after an «alcohol» vs a «clean» night - the difference is obvious.",
+      dont_know_start: "Step 1 - go 7 days in a row without drinking and measure the difference in how you feel.",
+    },
+    category: "general",
+  },
+  {
+    match: () => true,
+    headline: "Toxic habits accelerate cellular aging",
+    detail: "Nicotine and alcohol are the most studied accelerators of aging at the cellular level. Effects accumulate non-linearly.",
+    actionByBarrier: {
+      time: "Work with one situation for two weeks.",
+      energy: "One toxic ritual pulls more reserve than it seems.",
+      conflicting_advice: "Quitting nicotine and alcohol - one of the few things in longevity that essentially every study agrees on.",
+      motivation: "A small win every day: not yesterday, but today.",
+      dont_know_start: "Step 1: this whole week, after every smoking or drinking event, write down 1-2 words describing what was happening before. By the end of the week you'll see your most frequent triggers.",
+    },
+    category: "general",
+  },
+];
+
 const SNIPPETS_BY_DOMAIN: Record<DomainKey, Snippet[]> = {
   sleep: SLEEP_SNIPPETS,
   stress: STRESS_SNIPPETS,
@@ -582,40 +1019,12 @@ const SNIPPETS_BY_DOMAIN: Record<DomainKey, Snippet[]> = {
   habits: HABITS_SNIPPETS,
 };
 
-/** Английские заголовки карточек-ускорителей (параллель русским headline в SNIPPETS). */
-const ACCELERATOR_SNIPPET_HEADLINE_EN: Record<string, string> = {
-  "Критический недосып - меньше 5 часов": "Critical sleep debt - under 5 hours",
-  "Сон сдвинут в день - сбит режим": "Sleep shifted into the day - disrupted rhythm",
-  "Сон 5-6 ч - хронический дефицит восстановления": "5-6 hours of sleep - chronic recovery deficit",
-  "Сон чуть ниже восстановительного порога": "Sleep slightly below the recovery threshold",
-  "Сон 10+ ч - сигнал нарушения качества": "10+ hours of sleep - a signal of quality issues",
-  "Достаточно сплю, но днём клонит - скрытая проблема": "You sleep enough but feel drowsy in the day - a hidden issue",
-  "Прерывистый сон - часы есть, восстановления нет": "Fragmented sleep - hours in bed, little recovery",
-  "Позднее засыпание - сдвинутый циркадный ритм": "Late bedtime - shifted circadian rhythm",
-  "Ментальный туман большую часть недели": "Brain fog most of the week",
-  "Хронический перегруз истощает нервную систему": "Chronic overload drains the nervous system",
-  "Стабильно низкая энергия - это не норма": "Consistently low energy is not normal",
-  "Туман в голове 3-7 часов в неделю": "Brain fog 3-7 hours per week",
-  "Стресс тянет ресурс сильнее, чем кажется": "Stress pulls more from you than it feels like",
-  "Отсутствие движения - один из самых сильных факторов риска": "No movement - one of the strongest risk factors",
-  "8+ часов сидения - важно вставать и двигаться": "8+ hours sitting - important to stand up and move",
-  "Сниженная кардио-форма - самостоятельный фактор риска": "Reduced cardio fitness - a risk factor on its own",
-  "Ограниченная функциональная форма требует внимания": "Limited functional fitness needs attention",
-  "Недостаток движения накапливает дефицит здоровья": "Too little movement builds a health deficit",
-  "Движение работает против вас прямо сейчас": "Movement is working against you right now",
-  "Ежедневная ультра-обработанная еда запускает воспалительный каскад": "Daily ultra-processed food triggers an inflammatory cascade",
-  "Дефицит овощей истощает микробиом и митохондрии": "Low vegetable intake depletes the microbiome and mitochondria",
-  "Хроническая дегидратация замедляет метаболизм и мышление": "Chronic dehydration slows metabolism and thinking",
-  "Частая обработанная еда нарушает метаболизм": "Frequent processed food disrupts metabolism",
-  "Рацион работает против восстановления": "Your diet is working against recovery",
-  "Никотин ускоряет старение быстрее любого другого фактора - и это доказано сотнями исследований.":
-    "Nicotine accelerates aging faster than almost any other factor - hundreds of studies show this.",
-  "Частый алкоголь нарушает сон, гормоны и клеточное восстановление":
-    "Frequent alcohol disrupts sleep, hormones, and cellular repair",
-  "Нет безопасного порога: никотин повреждает сосуды даже эпизодически":
-    "There is no safe threshold: nicotine harms vessels even occasionally",
-  "Алкоголь 1-2 раза в неделю нарушает качество сна": "Alcohol 1-2 times a week still hurts sleep quality",
-  "Токсичные привычки ускоряют клеточное старение": "Toxic habits accelerate cellular aging",
+const SNIPPETS_BY_DOMAIN_EN: Record<DomainKey, Snippet[]> = {
+  sleep: SLEEP_SNIPPETS_EN,
+  stress: STRESS_SNIPPETS_EN,
+  movement: MOVEMENT_SNIPPETS_EN,
+  nutrition: NUTRITION_SNIPPETS_EN,
+  habits: HABITS_SNIPPETS_EN,
 };
 
 // Advanced «next-level» tips for users with strong domains (score ≥ 80).
@@ -732,13 +1141,102 @@ const OPTIMIZATION_TITLE_EN: Record<string, string> = {
   "Переход от «ноль» к восстановлению клеток": "From zero exposure to signs of cellular recovery",
 };
 
+const OPTIMIZATION_BY_DOMAIN_EN: Record<DomainKey, OptimizationVariant[]> = {
+  sleep: [
+    {
+      title: "From \"I get enough sleep\" to managed recovery",
+      body: "At your level subjective feel is no longer informative — you need objective dynamics. HRV, sleep onset, and sleep architecture shift before you'll feel it.",
+      action: "2 weeks with Oura/Whoop and daily HRV logging. One week with a CGM (glucose sensor) to see how nighttime glucose affects deep sleep.",
+    },
+    {
+      title: "Lock in a circadian window",
+      body: "Bedtime stability of ±30 min matters more than total duration — it sets the precision of melatonin and cortisol release. At your level, bedtime variability is the main source of dips.",
+      action: "Lock your bedtime window to a 30-minute span for 6 weeks. Measure sleep onset weekly — it's the most sensitive marker.",
+    },
+    {
+      title: "From duration to sleep-stage quality",
+      body: "Once duration is stable, the next step is structure: deep sleep in the first half of the night and REM in the second. It's trained via pre-sleep temperature and light.",
+      action: "Drop bedroom temperature to 18-19 °C, darkness from 10 PM. After 2 weeks compare the deep-sleep share on your tracker «before» vs «after».",
+    },
+  ],
+  stress: [
+    {
+      title: "From coping with load to measuring stress resilience",
+      body: "A strong baseline is no guarantee against chronic stress as responsibility grows. You need an indicator of «reserve» before it breaks.",
+      action: "Quarterly — morning cortisol test, plus measuring your usual HRV level every 2 weeks. Early signal — morning HRV ≥15% below your baseline for 3 days in a row.",
+    },
+    {
+      title: "From reactive recovery to proactive recovery",
+      body: "At your level «rest after stress» no longer works — pre-built recovery anchors during the day do. They keep the «calming» part of the nervous system in reserve.",
+      action: "Lock in 2 daily anchors of 10 min: 4-7-8 breathing in the morning and slow breathing before bed. After 4 weeks compare evening HRV.",
+    },
+    {
+      title: "Fine-tuning stimulants (caffeine, news, feeds)",
+      body: "Coffee, news and social media are the main hidden sources of stress for people with an already stable baseline. Their contribution shows only on the tracker.",
+      action: "Coffee only before noon, news in 15-min windows 1-2 times a day. Measure HRV at 5 PM for 14 days «before» vs «after».",
+    },
+  ],
+  movement: [
+    {
+      title: "From general activity to a VO₂max target",
+      body: "The general 150 min per week are already there. The next target — make it into the top-25% of VO₂max for your age: one of the strongest single predictors of mortality (Mandsager et al., JAMA 2018).",
+      action: "VO₂max measurement every 3 months (lab or Garmin/Apple Watch). Add 2 interval sessions of 4×4 at maximum per week — proven to lift VO₂max by 10-15% in 10 weeks.",
+    },
+    {
+      title: "Protecting muscle as metabolic reserve",
+      body: "After 35, muscle mass declines 3-5% per decade without strength work. It's the main metabolic reserve — without it, insulin sensitivity drops.",
+      action: "One strength day a week with progressive load. Body-composition measurement (DEXA or gym bioimpedance) every 6 months — track «lean» mass, not weight.",
+    },
+    {
+      title: "From volume to recovery — pacing load with HRV",
+      body: "At your level, average load no longer drives gains — you need periodization: hard days on good-recovery days, easy ones on high-load days. Without data this is guesswork.",
+      action: "Tie load to recovery: HRV 10% below your personal baseline — easy day; HRV in the green zone — hard work.",
+    },
+  ],
+  nutrition: [
+    {
+      title: "From \"I eat well\" to a personal metabolic map",
+      body: "On general principles you hit a ceiling fast. Individual response to food varies 3-4× between people (Zeevi et al., Cell 2015) — generic advice leaves a third of the potential on the table.",
+      action: "CGM (glucose sensor) for 14 days — get a personal list of foods that don't spike your sugar. Panel every 6 months: hs-CRP, ApoB, HbA1c, ALT, omega-3 index.",
+    },
+    {
+      title: "Micronutrient audit",
+      body: "Even on a good diet, hidden deficiencies happen — ferritin, vitamin D, B12, magnesium. They give no symptoms until critical, but limit recovery and cognition.",
+      action: "Every 6 months — ferritin, 25(OH)D, B12, magnesium. If reduced — short courses, not long supplement runs.",
+    },
+    {
+      title: "Timing and composition, not calories",
+      body: "At your level calories are usually fine. The next step is meal structure: feeding window, protein in the morning, fiber with every meal.",
+      action: "Feeding window 10-12 hours (e.g. 9:00-19:00), 25-30 g protein with breakfast, 30+ g fiber per day. Measure evening glucose after 2 weeks.",
+    },
+  ],
+  habits: [
+    {
+      title: "Lock in your protected baseline",
+      body: "Alcohol and nicotine under control — a contribution that compounds over years. The task is to keep the regimen from slipping in tough periods.",
+      action: "Quarterly do a 30-day audit: alcohol, nicotine, cannabis and sleep aids. Any 2× rise in frequency or dose vs your baseline is an early signal.",
+    },
+    {
+      title: "Social triggers — an early guardrail",
+      body: "Relapses usually happen not because of desire, but because of the setting: new groups, business trips, vacations. For you this is the main risk.",
+      action: "Pre-build one habit-replacement for each tough situation. An alternative drink at dinner, a walk ritual instead of a smoke break.",
+    },
+    {
+      title: "From zero exposure to signs of cellular recovery",
+      body: "Zero nicotine and minimal alcohol — the best you could have done. The next layer is the first signs of recovery in the labs (hs-CRP, FEV1, vascular elasticity).",
+      action: "Once a year — hs-CRP, spirometry (FEV1) and a pulse-recovery test. This gives an objective picture of recovery progress, not just a subjective «I breathe easier».",
+    },
+  ],
+};
+
 export function pickOptimizationForDomain(
   domainKey: DomainKey,
   score: ScoreResult,
   answers: Answers,
 ): OptimizationVariant {
   const seed = variantSeed(score, answers) + "|opt:" + domainKey;
-  return pickVariant(OPTIMIZATION_BY_DOMAIN[domainKey], seed);
+  const map = getLang() === "en" ? OPTIMIZATION_BY_DOMAIN_EN : OPTIMIZATION_BY_DOMAIN;
+  return pickVariant(map[domainKey], seed);
 }
 
 const OPTIMIZATION_EVIDENCE: Record<DomainKey, string> = {
@@ -749,12 +1247,28 @@ const OPTIMIZATION_EVIDENCE: Record<DomainKey, string> = {
   habits: "Sinha et al., Biological Psychiatry 2011: стресс-индуцированный возврат к алкоголю фиксируется задолго до осознанного желания - нужны внешние sensors.",
 };
 
+const OPTIMIZATION_EVIDENCE_EN: Record<DomainKey, string> = {
+  sleep: "Walker, Why We Sleep (2017) + Sleep Foundation 2023 meta-analysis: subjective sleep ratings correlate with objective ones at only r=0.3.",
+  stress: "Task-Force HRV Standard 1996; Thayer & Lane 2009: baseline HRV is the most sensitive non-invasive marker of autonomic balance.",
+  movement: "Mandsager et al., JAMA Netw Open 2018 (n=122,000): VO₂max is the strongest single predictor of all-cause mortality — stronger than smoking or diabetes.",
+  nutrition: "Zeevi et al., Cell 2015; PREDICT study 2020 (n=1,100): individual glycemic response to the same food varies ≥3× between people.",
+  habits: "Sinha et al., Biological Psychiatry 2011: stress-induced return to alcohol is detectable long before the conscious urge — external sensors are needed.",
+};
+
 const EVIDENCE_BY_DOMAIN: Record<DomainKey, string> = {
   sleep: "Cappuccio et al., Sleep 2010 (метаанализ 16 когорт, 1.4 млн человек): 7-9 ч - зона минимального риска смерти от всех причин; отклонение в любую сторону повышает риск на 12-35%.",
   stress: "Epel et al., PNAS 2004 (совместно с лаб. Elizabeth Blackburn, Нобелевская премия 2009): у людей с высоким хроническим стрессом теломеры соответствовали +9-17 годам дополнительного биологического старения.",
   movement: "Sagelv et al., BJSM 2023 (мета-анализ 4 когорт, n=11985): 22+ мин MVPA в день нейтрализуют избыточный риск смертности от длительного сидения.",
   nutrition: "Lane et al., BMJ 2024 (зонтичный обзор 45 метаанализов): высокое потребление ультра-обработанных продуктов связано с ростом риска диабета 2 типа на 40%, сердечно-сосудистых событий на 29%, ранней смерти от всех причин на 21%.",
   habits: "GBD Tobacco Collaborators, Lancet 2021 (195 стран): курение сокращает ожидаемую продолжительность здоровой жизни в среднем на 10 лет. Doll et al., BMJ 2004: отказ до 35 лет возвращает ожидаемую продолжительность жизни к уровню никогда не куривших.",
+};
+
+const EVIDENCE_BY_DOMAIN_EN: Record<DomainKey, string> = {
+  sleep: "Cappuccio et al., Sleep 2010 (meta-analysis of 16 cohorts, 1.4M people): 7-9 h is the zone of minimum all-cause mortality risk; deviation in either direction raises risk by 12-35%.",
+  stress: "Epel et al., PNAS 2004 (with the lab of Elizabeth Blackburn, Nobel 2009): people with high chronic stress had telomeres equivalent to +9-17 years of additional biological aging.",
+  movement: "Sagelv et al., BJSM 2023 (meta-analysis of 4 cohorts, n=11,985): 22+ min of MVPA per day neutralizes the excess mortality risk from prolonged sitting.",
+  nutrition: "Lane et al., BMJ 2024 (umbrella review of 45 meta-analyses): high intake of ultra-processed foods is linked to a 40% rise in type 2 diabetes risk, 29% in cardiovascular events, and 21% in all-cause early mortality.",
+  habits: "GBD Tobacco Collaborators, Lancet 2021 (195 countries): smoking shortens healthy life expectancy by an average of 10 years. Doll et al., BMJ 2004: quitting before 35 returns life expectancy to the level of never-smokers.",
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -953,25 +1467,25 @@ export function buildAccelerators(answers: Answers, score: ScoreResult): Acceler
       .sort((a, b) => b.score0to100 - a.score0to100)
       .slice(0, 3);
     return top.map((d) => {
+      // pickOptimizationForDomain уже возвращает EN-версию при getLang === "en"
       const opt = pickOptimizationForDomain(d.key, score, answers);
       return {
         key: d.key,
-        headline: isEn ? (OPTIMIZATION_TITLE_EN[opt.title] ?? opt.title) : opt.title,
+        headline: opt.title,
         detail: opt.body,
         yearsLostEstimate: tr(
           `${d.score0to100}/100 - выйти на следующий уровень`,
           `${d.score0to100}/100 - move to the next level`,
         ),
         action: opt.action,
-        evidence: isEn
-          ? "Evidence-backed optimization protocol from longitudinal aging and behavior studies."
-          : OPTIMIZATION_EVIDENCE[d.key],
+        evidence: isEn ? OPTIMIZATION_EVIDENCE_EN[d.key] : OPTIMIZATION_EVIDENCE[d.key],
       };
     });
   }
 
   return score.topThree.map((d) => {
-    const snippets = SNIPPETS_BY_DOMAIN[d.key];
+    // Снипеты подбираем из языкозависимого списка - всё уже на нужном языке.
+    const snippets = isEn ? SNIPPETS_BY_DOMAIN_EN[d.key] : SNIPPETS_BY_DOMAIN[d.key];
     const raw = snippets.find((s) => s.match(answers)) ?? snippets[snippets.length - 1];
     const conditions = answers.conditions ?? [];
     const barrier = answers.barrier ?? "";
@@ -979,17 +1493,11 @@ export function buildAccelerators(answers: Answers, score: ScoreResult): Acceler
 
     return {
       key: d.key,
-      headline: isEn
-        ? (ACCELERATOR_SNIPPET_HEADLINE_EN[adapted.headline] ?? `${d.label}: key growth lever`)
-        : adapted.headline,
-      detail: isEn
-        ? "This domain currently contributes to accelerated wear. Start with one actionable step and iterate weekly."
-        : adapted.detail,
+      headline: adapted.headline,
+      detail: adapted.detail,
       yearsLostEstimate: yearsLostLineFromDomain(d),
-      action: isEn ? "Start with the smallest viable action for 7 days, then scale." : adapted.action,
-      evidence: isEn
-        ? "Meta-analyses and longitudinal cohorts consistently link this domain to healthy-life expectancy."
-        : EVIDENCE_BY_DOMAIN[d.key],
+      action: adapted.action,
+      evidence: isEn ? EVIDENCE_BY_DOMAIN_EN[d.key] : EVIDENCE_BY_DOMAIN[d.key],
     };
   });
 }
@@ -1037,15 +1545,6 @@ export function buildMaintenanceTips(score: ScoreResult): MaintenanceTip[] {
 }
 
 export function buildProtectors(score: ScoreResult): ProtectorInsight[] {
-  const isEn = getLang() === "en";
-  if (isEn) {
-    return score.protectors.map((d) => ({
-      key: d.key,
-      headline: `${d.label} supports your longevity`,
-      detail:
-        "This domain is currently in a protective range. Keep consistency and monitor drift signals to preserve the advantage.",
-    }));
-  }
   const TEMPLATES: Record<DomainKey, ProtectorInsight> = {
     sleep: {
       key: "sleep",
@@ -1073,7 +1572,35 @@ export function buildProtectors(score: ScoreResult): ProtectorInsight[] {
       detail: "Отсутствие никотина и минимум алкоголя - один из крупнейших вкладов в биологический возраст (GBD Tobacco 2021).",
     },
   };
-  return score.protectors.map((d) => TEMPLATES[d.key]);
+  const TEMPLATES_EN: Record<DomainKey, ProtectorInsight> = {
+    sleep: {
+      key: "sleep",
+      headline: "Sleep is working for you",
+      detail: "A stable schedule and sufficient duration is one of the key factors in the Li et al. 2024 model. You already have that foundation.",
+    },
+    stress: {
+      key: "stress",
+      headline: "Stress is in a manageable corridor",
+      detail: "You hold the load within limits that don't trigger chronic inflammation. That directly protects telomeres (Epel & Blackburn, PNAS 2004).",
+    },
+    movement: {
+      key: "movement",
+      headline: "Movement is part of your life",
+      detail: "Regular activity is associated with lower chronic disease risk and more healthy years of life (Li et al. 2024).",
+    },
+    nutrition: {
+      key: "nutrition",
+      headline: "Diet on the side of longevity",
+      detail: "A whole-food bias, enough vegetables, minimal ultra-processed — reduces the risk of inflammatory disease (Lane et al. BMJ 2024).",
+    },
+    habits: {
+      key: "habits",
+      headline: "No toxic anchors",
+      detail: "No nicotine and minimal alcohol is one of the largest contributors to biological age (GBD Tobacco 2021).",
+    },
+  };
+  const map = getLang() === "en" ? TEMPLATES_EN : TEMPLATES;
+  return score.protectors.map((d) => map[d.key]);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -1087,8 +1614,10 @@ export function lifeYearsHeadline(score: ScoreResult, answers: Answers): string 
   return lines.join("\n");
 }
 
+type CoverCtaTier = "minimal" | "light" | "moderate" | "substantial" | "severe";
+
 const COVER_CTA_VARIANTS: Record<
-  "minimal" | "light" | "moderate" | "substantial" | "severe",
+  CoverCtaTier,
   { withDevices: string; noDevices: string }
 > = {
   minimal: {
@@ -1123,28 +1652,57 @@ const COVER_CTA_VARIANTS: Record<
   },
 };
 
+const COVER_CTA_VARIANTS_EN: Record<
+  CoverCtaTier,
+  { withDevices: string; noDevices: string }
+> = {
+  minimal: {
+    withDevices:
+      "You already have trackers — a strong starting baseline. Longy unifies their data into one picture, layers in nutrigenetics and inflammation markers, and together with the team helps you add another 3-5 healthy years.",
+    noDevices:
+      "Your baseline is already strong. To add another 3-5 healthy years, Longy will build a plan from your current state and your daily check-ins in the app — and once it becomes clear that a tracker would actually help, we'll tell you which one and why.",
+  },
+  light: {
+    withDevices:
+      "Specific weak spots are already visible. We'll find what exactly is affecting your sleep, HRV and energy, and suggest 2-3 protocols for the coming months.",
+    noDevices:
+      "Specific weak spots are already visible. Longy runs without forcing gadget purchases — we'll start with what you can log yourself in the app.",
+  },
+  moderate: {
+    withDevices:
+      "Three concrete points are on the next pages. Longy will connect your devices and your labs, and assemble a plan for your goal. In our data, 30-50% of the losses are recovered in this timeframe.",
+    noDevices:
+      "Three concrete points are on the next pages. Longy runs on simple daily check-ins without gadgets. If a tracker does start to make a real difference along the way — we'll tell you which one and why.",
+  },
+  substantial: {
+    withDevices:
+      "What you see below cannot be closed by «I should take better care of myself». Longy collects your device data into one protocol, picks 10-15 key labs, and walks you through a plan with weekly adjustments.",
+    noDevices:
+      "What you see below needs guidance. We work with you in the Longy app through daily tasks and a plan that adjusts to your goal. After 4 weeks we'll suggest one or two labs; after another 4 — whether you actually need a tracker.",
+  },
+  severe: {
+    withDevices:
+      "This is a major turnaround. The good news — the core factors are reversible in 8-16 weeks. We'll connect your trackers and walk with you daily: tasks for the day, plan for the month, adjustments toward your goal.",
+    noDevices:
+      "This is a major turnaround. The good news — the core factors are reversible. In Longy we'll start with the simplest version: 3 simple actions per day. No purchases, no diets, no «everything at once».",
+  },
+};
+
+function coverCtaTierFor(yearsLifeLost: number): CoverCtaTier {
+  if (yearsLifeLost < 0.5) return "minimal";
+  if (yearsLifeLost < 2) return "light";
+  if (yearsLifeLost < 4) return "moderate";
+  if (yearsLifeLost < 7) return "substantial";
+  return "severe";
+}
+
 export function coverCTA(score: ScoreResult, answers: Answers): string {
-  if (getLang() === "en") {
-    const hasDevices = (answers.trackers ?? []).some((t) => t !== "none" && t !== "other");
-    return hasDevices
-      ? "Longy integrates your device data, identifies high-impact levers, and runs a weekly adaptive protocol so improvements are measurable and sustainable."
-      : "Longy works even without devices: start with simple daily signals, then add only the data sources that clearly improve your outcomes.";
-  }
-  const y = score.yearsLifeLostTotal;
   const hasDevices = (answers.trackers ?? []).some(
     (t) => t !== "none" && t !== "other",
   );
-  const tier =
-    y < 0.5
-      ? "minimal"
-      : y < 2
-        ? "light"
-        : y < 4
-          ? "moderate"
-          : y < 7
-            ? "substantial"
-            : "severe";
-  return COVER_CTA_VARIANTS[tier][hasDevices ? "withDevices" : "noDevices"];
+  const tier = coverCtaTierFor(score.yearsLifeLostTotal);
+  const map = getLang() === "en" ? COVER_CTA_VARIANTS_EN : COVER_CTA_VARIANTS;
+  return map[tier][hasDevices ? "withDevices" : "noDevices"];
 }
 
 /**
@@ -1161,18 +1719,36 @@ export function lifeYearsModelNote(_score: ScoreResult): string {
  * «не добираете», «водопад», «служебная шкала».
  */
 export function coverSubtitle(score: ScoreResult): string {
-  if (getLang() === "en") {
-    if (score.isGainBranch) {
-      const gain = Math.max(1, Math.round(score.gainPotentialYears));
-      return `You already have a strong lifestyle baseline. Below are the precision levers that can add about +${gain} healthy years.`;
-    }
-    if (score.longyScoreBand === "risk" || score.longyScoreBand === "critical") {
-      return "Your current pattern accelerates biological aging, but key drivers are reversible with a structured 8-week protocol.";
-    }
-    return "Several factors are creating a healthy-life gap. Below are the top drivers and where to start first.";
-  }
   const band = score.longyScoreBand;
   const y = score.yearsLifeLostTotal;
+
+  if (getLang() === "en") {
+    // GAIN-ветка - тот же band-split, что и в RU.
+    if (score.isGainBranch) {
+      const gain = Math.max(1, Math.round(score.gainPotentialYears));
+      switch (band) {
+        case "excellent":
+          return `You are ahead of most people your age. Below — where you can add another ~${gain} healthy years with Longy.`;
+        case "good":
+          return "You already have a solid baseline across all the key factors. We show where Longy can push results further through precision insights.";
+        default:
+          return "Core factors are in normal range. Below — a breakdown of where the result can be reinforced.";
+      }
+    }
+
+    // LOSS-ветка с band-split.
+    switch (band) {
+      case "excellent":
+      case "good":
+        return `Strong baseline, but a few specific weak spots — together they "cost" ≈${y.toFixed(1)} ${pluralEn(Math.round(y), "year", "years")}. We break down the three main ones.`;
+      case "attention":
+        return "Several factors are accumulating a healthy-life gap. We break down the three main ones — and what to do over the next month.";
+      case "risk":
+        return "Several factors are creating a healthy-life gap. Below — the top-3 main drivers and where to start first.";
+      case "critical":
+        return "Several factors are creating a healthy-life gap. Below — the top-3 main drivers and where to start first.";
+    }
+  }
 
   // GAIN-ветка - переключение по isGainBranch (longyScore≥80, потерь<0.5)
   if (score.isGainBranch) {
@@ -1639,17 +2215,158 @@ const MAIN_DRIVER_VARIANTS: Record<DomainKey, MainDriverVariant[]> = {
   ],
 };
 
+const MAIN_DRIVER_VARIANTS_EN: Record<DomainKey, MainDriverVariant[]> = {
+  sleep: [
+    {
+      match: (a) => {
+        const h = computeSleepHours(a);
+        return h !== null && h < 5;
+      },
+      headline: "Less than 5 hours of sleep — chronic deprivation",
+      subtext: "Your body doesn't get the time to recover",
+    },
+    {
+      match: (a) => {
+        const h = computeSleepHours(a);
+        return (
+          h !== null && h >= 7 && h <= 9 &&
+          (a.bedtime === "after05" || a.bedtime === "04-05" || a.bedtime === "03-04")
+        );
+      },
+      headline: "Sleep shifted into the day — owl mode",
+      subtext: "Even 8 hours starting at 4 AM = constant jetlag",
+    },
+    {
+      match: (a) => a.sleepProblems === "9+",
+      headline: "Fragmented sleep",
+      subtext: "Hours in bed, but no recovery",
+    },
+    {
+      match: (a) => a.daytimeSleepiness === "9+",
+      headline: "Daytime drowsiness",
+      subtext: "A hidden recovery deficit",
+    },
+    {
+      match: () => true,
+      headline: "Sleep below optimum",
+      subtext: "One of the strongest longevity factors",
+    },
+  ],
+  habits: [
+    {
+      match: (a) => a.nicotine === "regular",
+      headline: "Regular nicotine",
+      subtext: "The most studied accelerator of aging",
+    },
+    {
+      match: (a) => a.alcohol === "daily",
+      headline: "Daily alcohol",
+      subtext: "Hits sleep, hormones, and cells",
+    },
+    {
+      match: (a) => a.nicotine === "sometimes",
+      headline: "Episodic nicotine",
+      subtext: "There is no safe threshold",
+    },
+    {
+      match: (a) => a.alcohol === "3-4wk",
+      headline: "Frequent alcohol",
+      subtext: "Disrupts REM sleep and recovery",
+    },
+    {
+      match: () => true,
+      headline: "Toxic habits",
+      subtext: "Accelerate cellular aging",
+    },
+  ],
+  movement: [
+    {
+      match: (a) => a.activeDays === "0",
+      headline: "Almost no movement",
+      subtext: "Muscle is the main engine of metabolism and longevity",
+    },
+    {
+      match: (a) => a.sittingHours === "8+" && (a.activeDays === "0" || a.activeDays === "1-2"),
+      headline: "Sedentary lifestyle",
+      subtext: "8+ hours of sitting can't be undone in the evening",
+    },
+    {
+      match: (a) => a.activeDays === "1-2",
+      headline: "Not enough movement",
+      subtext: "WHO minimum is 3-4 days a week",
+    },
+    {
+      match: (a) => a.sittingHours === "8+",
+      headline: "Too much sitting",
+      subtext: "You need short active breaks",
+    },
+    {
+      match: () => true,
+      headline: "Insufficient movement",
+      subtext: "A health deficit is building up",
+    },
+  ],
+  nutrition: [
+    {
+      match: (a) => a.processedFood === "daily",
+      headline: "Daily ultra-processed food",
+      subtext: "The main driver of inflammation",
+    },
+    {
+      match: (a) => a.veggiesFruits === "<3_week",
+      headline: "Almost no vegetables or fiber",
+      subtext: "Your microbiome is starved of fuel",
+    },
+    {
+      match: (a) => a.water === "<1l",
+      headline: "Chronic dehydration",
+      subtext: "Slows metabolism and cognition",
+    },
+    {
+      match: (a) => a.processedFood === "4-6wk" || (a.processedFood as string) === "3-6wk",
+      headline: "Processed food several times a week",
+      subtext: "Inflammation builds up gradually",
+    },
+    {
+      match: () => true,
+      headline: "Diet works against recovery",
+      subtext: "The foundation of all other factors",
+    },
+  ],
+  stress: [
+    {
+      match: (a) => a.foggyHours === "40+h" || a.foggyHours === "20-40h",
+      headline: "Chronic mental fog",
+      subtext: "More than 20 hours a week is already a signal",
+    },
+    {
+      match: (a) => a.energyPattern === "mostly_low",
+      headline: "Consistently low energy",
+      subtext: "It's not normal, even if it feels like background",
+    },
+    {
+      match: (a) => a.foggyHours === "14-20h" || a.foggyHours === "7-14h",
+      headline: "Fragmented focus",
+      subtext: "Cortisol doesn't drop in time",
+    },
+    {
+      match: (a) => a.energyPattern === "unstable",
+      headline: "Energy swings day to day",
+      subtext: "A sign of an unbalanced nervous system",
+    },
+    {
+      match: () => true,
+      headline: "Stress drains your reserve",
+      subtext: "Even moderate background accelerates aging",
+    },
+  ],
+};
+
 export function pickMainDriver(answers: Answers, score: ScoreResult): MainDriver | null {
   const top = score.topThree[0];
   if (!top) return null;
-  if (getLang() === "en") {
-    return {
-      domain: top,
-      headline: `${top.label} is your #1 leverage point`,
-      subtext: "Fixing this domain first gives the fastest return in score and healthy-year trajectory.",
-    };
-  }
-  const variants = MAIN_DRIVER_VARIANTS[top.key];
+  const map = getLang() === "en" ? MAIN_DRIVER_VARIANTS_EN : MAIN_DRIVER_VARIANTS;
+  const variants = map[top.key];
   const v = variants.find((x) => x.match(answers, top)) ?? variants[variants.length - 1];
   return { domain: top, headline: v.headline, subtext: v.subtext };
 }
@@ -1731,59 +2448,59 @@ export function longyForGoalBlock(goal: Answers["goal"]): LongyUnderGoal | null 
     const map: Record<Exclude<Answers["goal"], "">, LongyUnderGoal> = {
       weight_loss: {
         bullets: [
-          "Connects smart scales and tracks trend, not noisy day-to-day fluctuations",
-          "AI nutrition coach builds plans around your preferences - no rigid dieting",
-          "Weekly protocol updates based on progress, sleep, and recovery",
+          "We connect smart scales — you see the overall trend, not morning spikes",
+          "The AI nutrition coach builds a meal plan around your favorite foods — no diets",
+          "Once a week we update the plan: what to eat, how to move, how much to sleep",
         ],
-        cta: "In 8 weeks - stable −4 to −7 kg without rebound",
+        cta: "In 8 weeks — stable −4 to −7 kg, and the understanding of how to keep them off",
       },
       muscle_gain: {
         bullets: [
-          "Training plan tailored to your equipment and current level",
-          "Protein and recovery control via wearable data - no obsessive tracking",
-          "HRV-based load adaptation: push on strong days, recover on heavy days",
+          "Training plan tailored to your level — no chasing the «perfect program»",
+          "We track whether you're getting enough protein and recovery from wearable data — no gram counting per meal",
+          "The AI coach reads your overnight recovery and tells you: hard session today, easy one tomorrow",
         ],
-        cta: "In 8 weeks - measurable strength and lean-mass progress",
+        cta: "In 8 weeks — strength and lean-mass gains without burnout",
       },
       energy: {
         bullets: [
-          "Finds your real energy-drop windows and root causes",
-          "AI therapist suggests targeted interventions: light, meals, recovery breaks",
-          "Weekly report: what works, what to drop, what to scale",
+          "We see exactly which hours dip — often the issue is not sleep, it's something else",
+          "We suggest what to try right now: more daylight, eat differently, take a pause",
+          "Weekly report: what worked, what to drop",
         ],
-        cta: "In 8 weeks - stable energy from morning to evening",
+        cta: "In 8 weeks — steady energy from morning to evening",
       },
       nutrition: {
         bullets: [
-          "Photo-based food diary - no grams and no calorie obsession",
-          "AI nutrition coach explains choices, not just rules",
-          "Tracks practical markers: fiber, protein, ultra-processed intake",
+          "Photo-based food diary — no grams, no counting",
+          "The AI nutrition coach explains your choice, not enforces rules",
+          "Tracking the real markers — fiber, protein, ultra-processed intake",
         ],
-        cta: "In 8 weeks - sustainable nutrition habits, not another short-term diet",
+        cta: "In 8 weeks — durable eating habits, not another diet",
       },
       endurance: {
         bullets: [
-          "Cardio plan aligned with your baseline and target",
-          "Weekly plan auto-adjusts if a workout is missed",
+          "Cardio plan tuned to your baseline and target — 10K, half-marathon or simply more",
+          "The week auto-adjusts if you skip a workout",
           "VO2max and threshold tracking from wearable data",
         ],
-        cta: "In 8 weeks - consistent endurance gains without overuse",
+        cta: "In 8 weeks — sustained endurance gains without injuries",
       },
       sleep: {
         bullets: [
-          "Wearable sleep analysis: deep sleep, REM, wakeups, HRV",
-          "Bedtime routine adapted to your real schedule",
-          "Shows what daytime patterns impact your sleep the most",
+          "Wearable / ring analysis: deep sleep, REM, awakenings, HRV",
+          "Bedtime ritual tuned to your schedule, not «in bed by 10 PM»",
+          "The link: what during the day affects your sleep the most",
         ],
-        cta: "In 8 weeks - stable 7-9 hours with stronger recovery",
+        cta: "In 8 weeks — stable 7-9 hours with strong recovery",
       },
       biological_age: {
         bullets: [
-          "Unifies all your device data into one coherent picture",
-          "Recalculates biological-age trajectory weekly",
-          "Suggests only high-yield tests tailored to your profile",
+          "Unifies all your devices into one picture — no manual cross-checking",
+          "Recalculates biological age weekly",
+          "We tell you which 5-10 labs to take — no «order everything available»",
         ],
-        cta: "In 8 weeks - lower biological-age trajectory and a maintenance path",
+        cta: "In 8 weeks — biological age below your passport age and a maintenance path",
       },
     };
     return map[goal];
@@ -1885,43 +2602,102 @@ export const EIGHT_WEEK_PROMISE: Record<DomainKey, EightWeekBundle[]> = {
   ],
 };
 
+const EIGHT_WEEK_PROMISE_EN: Record<DomainKey, EightWeekBundle[]> = {
+  habits: [
+    [
+      "We find the specific triggers — what kicks off the urge",
+      "The AI coach offers an alternative in the moment — not «forbidden», but a swap",
+      "Tracking clean days, without nagging",
+    ],
+    [
+      "Map of hard situations — social, emotional, time-based",
+      "For each one — a pre-built 5-minute habit-replacement",
+      "HRV shows how your body responds to abstinence. Progress in numbers, not feelings.",
+    ],
+    [
+      "Gradual reduction trigger by trigger — without pressure or full abstinence",
+      "Weekly review: which moments stayed clean, which didn't — without judgement",
+      "By week 8 — a stable new baseline and clarity on your weak points",
+    ],
+  ],
+  movement: [
+    [
+      "Activity plan tuned to your schedule — not «an hour at the gym», but short daily sessions",
+      "Plan adapts to HRV and sleep: hard days — rest, strong ones — progress",
+      "22-minute protocol for desk work (Sagelv et al., BJSM 2023)",
+    ],
+    [
+      "Baseline aerobic work 3×/week + 1 strength day — the longevity minimum",
+      "VO₂max measured via watch or stair test — progress visible in 6 weeks",
+      "The AI coach watches your progress so you train exactly as much as needed",
+    ],
+    [
+      "From «do/skip» to a structured week with micro-goals",
+      "Recovery is part of the plan, not a reaction to fatigue. Rest when the body actually needs it.",
+      "By week 8 — the habit is built.",
+    ],
+  ],
+  sleep: [
+    [
+      "Wearable data analysis: where exactly your sleep suffers",
+      "Bedtime ritual tuned to your schedule, not «in bed by 10 PM»",
+      "The link: what during the day affects sleep the most",
+    ],
+    [
+      "Circadian audit: morning light window, bed and wake-up ±30 min",
+      "AI surfaces the «bad» habits — caffeine after 2 PM, screens in bed, late dinners",
+      "Tracking SWS and REM shows the real sleep architecture, not just duration",
+    ],
+    [
+      "Micro-experiments: change one variable, see the result on the tracker in 3 nights",
+      "Bedroom temperature, light, last meal — we test every factor",
+      "By week 8 — stable 7-9 h with a noticeable recovery boost",
+    ],
+  ],
+  nutrition: [
+    [
+      "Photo-based food diary — no grams, no counting",
+      "The AI nutrition coach explains your choice, not enforces bans",
+      "Tracking the real markers — fiber, protein, ultra-processed",
+    ],
+    [
+      "First-week audit — what actually lands on the plate, without judgement",
+      "Swaps instead of bans: one processed item replaced by one whole-food, week by week",
+      "Feeding window 10-12 h + 30 g fiber per day — the two main anchors",
+    ],
+    [
+      "AI helps with real decisions — what to order at a café, what to buy at the store",
+      "Every 4 weeks a short self-audit: what sticks, what doesn't",
+      "By week 8 — durable eating habits, not a willpower diet",
+    ],
+  ],
+  stress: [
+    [
+      "HRV as an early overload marker",
+      "Short 2-5 minute practices embedded into the day",
+      "Weekly report: what unloads vs what depletes",
+    ],
+    [
+      "Map of daytime stress peaks from watch data — where exactly the «resource leaks»",
+      "For each peak — a short 2-5 min technique: breath, walk, or a brief thought-dump",
+      "After 4 weeks — visible rise in evening HRV and sleep quality",
+    ],
+    [
+      "Stimulant audit: coffee, news, social media, multitasking",
+      "Work and recovery windows — not a habit, a structure of the day",
+      "By week 8 — nervous system in balance and predictable energy",
+    ],
+  ],
+};
+
 export function pickEightWeekPromise(
   domainKey: DomainKey,
   score: ScoreResult,
   answers: Answers,
 ): EightWeekBundle {
-  if (getLang() === "en") {
-    const en: Record<DomainKey, EightWeekBundle> = {
-      habits: [
-        "Map real triggers and high-risk moments",
-        "Use replacement rituals instead of willpower-only restrictions",
-        "Track clean streaks and improve consistency week by week",
-      ],
-      movement: [
-        "Adaptive movement plan for your schedule and recovery state",
-        "Progressive cardio + strength baseline for longevity",
-        "Data-driven load management to avoid plateau and overtraining",
-      ],
-      sleep: [
-        "Pinpoint sleep bottlenecks from wearable data",
-        "Circadian alignment: light timing, bedtime consistency, caffeine windows",
-        "Micro-experiments to improve deep sleep and recovery in 8 weeks",
-      ],
-      nutrition: [
-        "Photo-based tracking with practical food swaps",
-        "Build a stable structure: feeding window + fiber + protein baseline",
-        "Weekly adjustments based on adherence and energy response",
-      ],
-      stress: [
-        "HRV-guided stress monitoring and recovery anchors",
-        "2-5 minute interventions embedded into the day",
-        "Weekly review of what restores vs what drains your system",
-      ],
-    };
-    return en[domainKey];
-  }
   const seed = variantSeed(score, answers) + "|8w:" + domainKey;
-  return pickVariant(EIGHT_WEEK_PROMISE[domainKey], seed);
+  const map = getLang() === "en" ? EIGHT_WEEK_PROMISE_EN : EIGHT_WEEK_PROMISE;
+  return pickVariant(map[domainKey], seed);
 }
 
 /**

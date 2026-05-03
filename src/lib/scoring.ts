@@ -52,10 +52,10 @@ export interface ScoreResult {
   velocityWaterfall: WaterfallItem[];
   projection: Projection;
 
-  // Гипотетические дополнительные годы СВЕРХ 12-летнего healthspan Li et al.,
-  // которые Longy даёт через precision-инструменты (HRV, нутригенетика, маркеры
-  // воспаления). Считаются только когда score крепкий (≥80, потерь <0.5).
-  // В UI используются в GAIN-ветке вместо yearsLifeLostTotal.
+  // Гипотетические дополнительные годы, которые Longy даёт через precision-
+  // инструменты (HRV, нутригенетика, маркеры воспаления). Считаются для
+  // GAIN-ветки (longyScore ≥ 90) и клампятся к [4, 5] - это маркетинговое
+  // обещание сервиса. См. buildGainPotential для деталей подсчёта.
   gainPotentialYears: number;
   gainPotentialWaterfall: WaterfallItem[];
   isGainBranch: boolean;
@@ -417,6 +417,31 @@ function buildGainPotential(
   return { years, items };
 }
 
+/**
+ * Потенциал прироста healthspan для LOSS-ветки (longyScore < 90).
+ * Кусочно-линейная интерполяция по якорям, заданным фаундером:
+ *   longyScore=0..20  → 11 лет (критическая зона)
+ *   longyScore=60     → 7.5 лет (средний пользователь)
+ *   longyScore=80     → 3.5 лет (здоровый пользователь)
+ *   longyScore=95..100 → 2 года (для пограничного longyScore=89)
+ *
+ * GAIN-ветка (longyScore >= 90) использует отдельную buildGainPotential
+ * с clamp [4, 5] - это precision-потенциал Longy (HRV, нутригенетика,
+ * маркеры воспаления).
+ *
+ * Заменяет квадратичную модель Σ(score/100)² × MAX_YEARS, которая
+ * давала слишком маленькие потери в средней зоне (~4 года при scores=80,
+ * фаундер хочет 6-7).
+ */
+function healthspanGapYears(longyScore: number): number {
+  const s = Math.max(0, Math.min(100, longyScore));
+  if (s <= 20) return 11;
+  if (s <= 60) return 11 + ((s - 20) * (7.5 - 11)) / (60 - 20);
+  if (s <= 80) return 7.5 + ((s - 60) * (3.5 - 7.5)) / (80 - 60);
+  if (s <= 95) return 3.5 + ((s - 80) * (2 - 3.5)) / (95 - 80);
+  return 2;
+}
+
 export function calculateScore(a: Answers): ScoreResult {
   const stress = stressDomain(a);
   const sleep = sleepDomain(a);
@@ -472,20 +497,17 @@ export function calculateScore(a: Answers): ScoreResult {
     else wfBase.splice(insertIdx, 0, bmiRow);
   }
 
-  // Вариант A: «годы здоровой жизни» - одна модель на всех экранах.
-  // Сколько вы сейчас реализуете из потенциала Li et al. (12 лет).
-  // Используем нелинейную (квадратичную) функцию: домен «отдаёт» свои годы
-  // только при высоком score - это значит, что любые промахи в стиле жизни
-  // воспринимаются как ощутимая потеря, а не «у вас почти всё хорошо».
-  const HEALTHSPAN_POWER = 2;
-  const healthspanYearsRaw = Object.values(domains).reduce(
-    (sum, d) =>
-      sum + Math.pow(d.score0to100 / 100, HEALTHSPAN_POWER) * HEALTHSPAN_MAX_YEARS[d.key],
-    0,
+  // Healthspan gap считается напрямую от longyScore через якоря фаундера.
+  // Дохлый (longyScore≤20) → 11 лет потерь; средний (60) → 7.5;
+  // здоровый (80) → 3.5. GAIN-ветка (longyScore ≥ 90) использует отдельную
+  // buildGainPotential с clamp [4,5]. См. функцию healthspanGapYears выше.
+  const longyScoreForGap = Math.max(
+    1,
+    Math.min(100, Math.round(100 - agingVelocityPct * 2)),
   );
-  // Итоговая потеря для шапки/вердикта = то же число, что и gap в HealthspanStrip.
   const yearsLifeLostTotalRounded =
-    Math.round(Math.max(0, HEALTHSPAN_TOTAL_YEARS - healthspanYearsRaw) * 10) / 10;
+    Math.round(healthspanGapYears(longyScoreForGap) * 10) / 10;
+  const healthspanYearsRaw = HEALTHSPAN_TOTAL_YEARS - yearsLifeLostTotalRounded;
   const rawWfSum = wfBase.reduce((s, w) => s + w.delta, 0);
 
   let velocityWaterfall: WaterfallItem[] = wfBase.map((w) => ({

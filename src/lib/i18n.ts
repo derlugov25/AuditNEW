@@ -21,10 +21,13 @@ type Dict = {
   };
   footer: {
     site: string;
+    siteHref: string;
     email: string;
     notClinical: string;
     privacy: string;
+    privacyHref: string;
     terms: string;
+    termsHref: string;
   };
   hero: {
     reportTitle: string;
@@ -73,10 +76,13 @@ const DICT: Record<Lang, Dict> = {
     },
     footer: {
       site: "longy.ai",
+      siteHref: "https://longy.ai/ru",
       email: "info@longy.ai",
       notClinical: "Не является клиническим диагнозом",
       privacy: "Конфиденциальность",
+      privacyHref: "https://longy.ai/ru/privacy-policy",
       terms: "Условия",
+      termsHref: "https://longy.ai/ru/terms-of-service",
     },
     hero: {
       reportTitle: "Ваш персональный отчёт",
@@ -124,10 +130,13 @@ const DICT: Record<Lang, Dict> = {
     },
     footer: {
       site: "longy.ai",
+      siteHref: "https://longy.ai/",
       email: "info@longy.ai",
       notClinical: "Not a clinical diagnosis",
       privacy: "Privacy",
+      privacyHref: "https://longy.ai/privacy-policy",
       terms: "Terms",
+      termsHref: "https://longy.ai/terms-of-service",
     },
     hero: {
       reportTitle: "Your Personal Report",
