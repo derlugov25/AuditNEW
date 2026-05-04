@@ -17,6 +17,7 @@ type QMode =
   | "text";
 
 // Нумерация совпадает с порядком вопросов в src/lib/quiz-questions.ts (Q1..Q28).
+// Строка может быть «N. ответ» или просто «ответ» — тогда N берётся по порядку (после lang/meta).
 const MAPS: Record<number, QMode> = {
   // Q1. Главная цель
   1: {
@@ -658,6 +659,8 @@ export function parseInput(raw: string): ParseResult {
   let langExplicit = false;
   let enHits = 0;
   let ruHits = 0;
+  /** Следующий вопрос для строк без «N.» (не считая lang и name:/email:/telegram:). */
+  let nextSequentialQ = 1;
 
   const lines = raw.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
@@ -685,13 +688,22 @@ export function parseInput(raw: string): ParseResult {
       continue;
     }
 
-    const qMatch = line.match(/^(\d{1,2})\s*[.)]\s*(.+)$/);
-    if (!qMatch) {
-      warnings.push(`Строка ${i + 1} проигнорирована: "${line}"`);
-      continue;
+    const numberedMatch = line.match(/^(\d{1,2})\s*[.)]\s*(.+)$/);
+    let qNum: number;
+    let rest: string;
+    if (numberedMatch) {
+      qNum = Number(numberedMatch[1]);
+      rest = numberedMatch[2]!.trim();
+      nextSequentialQ = Math.max(nextSequentialQ, qNum + 1);
+    } else {
+      if (nextSequentialQ > 28) {
+        warnings.push(`Строка ${i + 1} проигнорирована: уже получено 28 ответов, лишнее «${line}»`);
+        continue;
+      }
+      qNum = nextSequentialQ;
+      rest = line;
+      nextSequentialQ += 1;
     }
-    const qNum = Number(qMatch[1]);
-    const rest = qMatch[2].trim();
 
     // Авто-детект языка по содержимому ответов: сравниваем количество кириллицы и латиницы.
     enHits += (rest.match(/[A-Za-z]/g) ?? []).length;

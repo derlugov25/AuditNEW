@@ -1,30 +1,30 @@
-lang: ru
+lang: en
 
-1. Снижение биологического возраста
-2. На высоком уровне и стабильно весь день
-3. 3-7 часов
-4. Предпочитаю не указывать, Другое, Заболевания щитовидной железы
-5. 00:00-01:00
-6. 06:00-07:00
-7. 4-8 ночей (1-2 раза в неделю)
-8. 4-8 раз (1-2 раза в неделю)
-9. 0 дней
-10. Менее 4 часов
-11. Лёгкая работа по дому, Умеренная работа по дому, Ходьба на короткие расстояния (10-15 минут)
-12. Меньше минуты
-13. 4-6 раз в неделю
-14. Реже 3 раз в неделю
-15. 1.5-2 литра
-16. 3-4 раза в неделю
-17. Нет
-18. Ходьба / лёгкая активность
-19. Быстро теряю мотивацию
-20. Мужской
-21. 63
-22. 171
-23. 250
-24. skip
-25. Oura Ring
-26. Ольга Фёдоров
-27. olgafedorov.77@example.com
-28. skip
+better sleep
+mostly low
+7-14 hours
+none
+11:00 pm 12:00 am
+7:00 8:00 am
+4-8 nights
+never
+3-4 days
+6-8 hours
+short walk, climbing stairs, light housework, moderate housework
+3-5 minutes
+2-3 times per week
+several times per week
+1-1.5 liters
+rarely
+no
+walking light activity
+not enough time
+male
+34
+178
+82
+skip
+Apple Watch
+Jordan Blake
+jordan.blake@example.com
+@jblake_audit

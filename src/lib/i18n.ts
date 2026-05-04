@@ -77,16 +77,14 @@ export function pluralRu(n: number, one: string, few: string, many: string): str
   return many;
 }
 
-/** «год / года / лет» после числа лет (в т.ч. дробного): 2 года, 5 лет, 0,5 года, 1,2 года. */
+/** «год / года / лет» после числа лет. Целые — по правилам числительного; дробные — «N,X года» (не «6,1 лет»). */
 export function healthyYearsUnitRu(years: number): string {
   const abs = Math.abs(years);
   const whole = Math.round(abs);
   const isWhole = Math.abs(abs - whole) < 1e-6;
   if (isWhole) return pluralRu(whole, "год", "года", "лет");
-  const ip = Math.floor(abs + 1e-9);
-  if (ip === 0) return "года";
-  if (ip === 1) return "года";
-  return pluralRu(ip, "год", "года", "лет");
+  // Дробь: для healthspan-диапазона в отчёте норма «6,1 года», «0,7 года».
+  return "года";
 }
 
 export function healthyYearsUnitEn(years: number): string {

@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Перезаписывает input.txt случайным валидным профилем (lang: ru, лейблы из quiz-questions).
+ * Ответы без «1. 2.» — по одной строке на вопрос, порядок как в QUESTIONS.
  */
 import { writeFileSync } from "node:fs";
 import path from "node:path";
@@ -87,65 +88,65 @@ function joinMultiLabels(labels: string[]): string {
 }
 
 function lineForQuestion(
-  index1: number,
+  _index1: number,
   q: (typeof QUESTIONS)[number],
   ctx: { displayName: string },
 ): string {
   if (q.type === "single") {
-    return `${index1}. ${pick(q.options).label}`;
+    return pick(q.options).label;
   }
   if (q.type === "multi") {
     if (q.id === "conditions") {
-      if (Math.random() < 0.42) return `${index1}. Нет`;
+      if (Math.random() < 0.42) return "Нет";
       const opts = q.options.filter((o) => o.value !== "none");
       const k = intIn(1, Math.min(3, opts.length));
-      return `${index1}. ${joinMultiLabels(
+      return joinMultiLabels(
         shuffle(opts)
           .slice(0, k)
           .map((o) => o.label),
-      )}`;
+      );
     }
     if (q.id === "functionalActivities") {
       const pool = q.options.filter((o) => !o.label.includes(","));
       const k = intIn(1, Math.min(4, pool.length));
-      return `${index1}. ${joinMultiLabels(
+      return joinMultiLabels(
         shuffle(pool)
           .slice(0, k)
           .map((o) => o.label),
-      )}`;
+      );
     }
     if (q.id === "trackers") {
-      if (Math.random() < 0.38) return `${index1}. Не пользуюсь`;
+      if (Math.random() < 0.38) return "Не пользуюсь";
       const opts = q.options.filter((o) => o.value !== "none");
       const k = intIn(1, Math.min(3, opts.length));
-      return `${index1}. ${joinMultiLabels(
+      return joinMultiLabels(
         shuffle(opts)
           .slice(0, k)
           .map((o) => o.label),
-      )}`;
+      );
     }
-    return `${index1}. ${pick(q.options).label}`;
+    return pick(q.options).label;
   }
   if (q.type === "number") {
-    if (q.id === "age") return `${index1}. ${intIn(q.min, q.max)}`;
-    if (q.id === "heightCm") return `${index1}. ${intIn(q.min, q.max)}`;
-    if (q.id === "weightKg") return `${index1}. ${intIn(q.min, q.max)}`;
+    if (q.id === "age") return String(intIn(q.min, q.max));
+    if (q.id === "heightCm") return String(intIn(q.min, q.max));
+    if (q.id === "weightKg") return String(intIn(q.min, q.max));
     if (q.id === "waistCm") {
-      return Math.random() < 0.32 ? `${index1}. skip` : `${index1}. ${intIn(q.min, q.max)}`;
+      return Math.random() < 0.32 ? "skip" : String(intIn(q.min, q.max));
     }
-    return `${index1}. ${intIn(q.min, q.max)}`;
+    return String(intIn(q.min, q.max));
   }
   if (q.type === "text") {
     if (q.id === "name") {
       ctx.displayName = `${pick(FIRST)} ${pick(LAST)}`;
-      return `${index1}. ${ctx.displayName}`;
+      return ctx.displayName;
     }
-    return `${index1}. skip`;
+    return "skip";
   }
   if (q.type === "email") {
-    return `${index1}. ${randomEmail(ctx.displayName)}`;
+    return randomEmail(ctx.displayName);
   }
-  return `${index1}. skip`;
+  return "skip";
 }
 
 function main() {
